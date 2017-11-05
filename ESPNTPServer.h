@@ -36,8 +36,14 @@
 
 #define NTP_PORT               123
 
-#define SYNC_EDGE_RISING  1
-#define SYNC_EDGE_FALLING 0
+#define SYNC_EDGE_RISING       1
+#define SYNC_EDGE_FALLING      0
+
+#define WARMUP_SECONDS         2
+#define MICROS_HISTORY_SIZE    1000
+#define PRECISION_COUNT        10000
+
+#define us2s(x) (((double)x)/1000000.0) // microseconds to seconds
 
 typedef struct ntp_time
 {
@@ -76,7 +82,7 @@ typedef struct ntp_packet
 
 #define NTP_VERSION     4
 
-#define REF_ID          "PPS"  // "GPS" when we have one!
+#define REF_ID          "PPS "  // "GPS " when we have one!
 
 #define setLI(value)    ((value&0x03)<<6)
 #define setVERS(value)  ((value&0x07)<<3)
@@ -89,5 +95,9 @@ typedef struct ntp_packet
 #define SEVENTY_YEARS   2208988800L
 #define toEPOCH(t)      ((uint32_t)t-SEVENTY_YEARS)
 #define toNTP(t)        ((uint32_t)t+SEVENTY_YEARS)
+
+//  simple versions - we don't worry about side effects
+#define max(a, b)   ((a) < (b) ? (b) : (a))
+#define min(a, b)   ((a) < (b) ? (a) : (b))
 
 #endif /* _ESPNTPServer_H_ */

@@ -21,20 +21,33 @@
  */
 
 #include "ESPNTPServer.h"
+#include <lwip/def.h> // htonl() & ntohl()
 #define DEBUG
 #include "Logger.h"
-#include <lwip/def.h> // htonl() & ntohl()
+
+//define NTP_PACKET_DEBUG
+
+int8_t            precision;
+volatile uint32_t dispersion;
 
 volatile uint32_t seconds;
-volatile uint32_t cycles;
-volatile uint32_t last_cpu_cycles;
-volatile uint32_t min_cycles;
-volatile uint32_t max_cycles;
+
+volatile uint32_t last_micros;
+volatile uint32_t micros_wraps;
+volatile uint32_t min_micros;
+volatile uint32_t max_micros;
+
+#if defined(MICROS_HISTORY_SIZE)
+volatile uint32_t micros_history[MICROS_HISTORY_SIZE];
+volatile uint16_t micros_history_count;
+volatile uint16_t micros_history_index;
+#endif
+
 
 AsyncUDP udp;
 DS3231   rtc;                       // real time clock on i2c interface
 
-#ifdef DEBUG
+#ifdef NTP_PACKET_DEBUG
 void dumpNTPPacket(NTPPacket* ntp)
 {
     dbprintf("size:       %u\n", sizeof(*ntp));
@@ -59,29 +72,50 @@ void dumpNTPPacket(NTPPacket* ntp)
 
 void oneSecondInterrupt()
 {
-    uint32_t cpu_cycles = ESP.getCycleCount();
+    uint32_t cur_micros = micros();
     //
     // the first time around we just initialize the last value
     //
-    if (last_cpu_cycles == 0)
+    if (last_micros == 0)
     {
-        last_cpu_cycles = cpu_cycles;
+        last_micros = cur_micros;
         return;
     }
 
-    cycles              = cpu_cycles - last_cpu_cycles;
-    last_cpu_cycles     = cpu_cycles;
+    if (cur_micros < last_micros)
+    {
+        ++micros_wraps;
+    }
+
+    uint32_t micros_count = cur_micros - last_micros;
+    last_micros           = cur_micros;
+
+    if (min_micros == 0 || micros_count < min_micros)
+    {
+        min_micros = micros_count;
+    }
+
+    if (micros_count > max_micros)
+    {
+        max_micros = micros_count;
+    }
+
+#if defined(MICROS_HISTORY_SIZE)
+    micros_history[micros_history_index++] = micros_count;
+    if (micros_history_index >= MICROS_HISTORY_SIZE)
+    {
+        micros_history_index = 0;
+    }
+    if (micros_history_count < MICROS_HISTORY_SIZE)
+    {
+        micros_history_count++;
+    }
+#endif
+
+    //
+    // increment seconds
+    //
     seconds += 1;
-
-    if (min_cycles == 0 || cycles < min_cycles)
-    {
-        min_cycles = cycles;
-    }
-
-    if (cycles > max_cycles)
-    {
-        max_cycles = cycles;
-    }
 
 #if defined(DEBUG)
     digitalWrite(LED_PIN, digitalRead(LED_PIN) ? LOW : HIGH);
@@ -103,22 +137,59 @@ void waitForEdge(int edge)
 void getNTPTime(NTPTime *time)
 {
     time->seconds         = toNTP(seconds);
-    uint32_t cpu_cycles   = ESP.getCycleCount();
-    uint32_t cycles_delta = cpu_cycles - last_cpu_cycles;
+    uint32_t cur_micros   = micros();
+    uint32_t micros_delta = cur_micros - last_micros;
 
     //
-    // if cycles_delta is at or bigger than cycles then
+    // if micros_delta is at or bigger than one second then
     // use the max fraction.
     //
-    if (cycles_delta >= cycles)
+    if (micros_delta >= 1000000)
     {
         time->fraction = 0xffffffff;
         return;
     }
 
-    double   percent      = (double)cycles_delta / (double)cycles;
-    //dbprintf("cycles_delta: %lu cycles: %lu percent: %lf\n", cycles_delta, cycles, percent);
+    double percent      = us2s(micros_delta);
+    //dbprintf("micros_delta: %lu percent: %lf\n", micros_delta, percent);
     time->fraction      = (uint32_t)(percent * (double)4294967296L);
+}
+
+int8_t computePrecision()
+{
+    NTPTime t;
+    unsigned long start = micros();
+    for (int i = 0; i < PRECISION_COUNT; ++i)
+    {
+        getNTPTime(&t);
+    }
+    unsigned long end = micros();
+    double total      = (double)(end - start) / 1000000.0;
+    double time       = total / PRECISION_COUNT;
+    double prec       = log2(time);
+    dbprintf("computePrecision: total:%f time:%f prec:%f\n", total, time, prec);
+    return (int8_t)prec;
+}
+
+int updateSeconds()
+{
+    DS3231DateTime dt;
+    if (rtc.readTime(dt))
+    {
+        dbprintln("updateSeconds: FAILED to read RTC, clearing bus & not checking seconds!");
+        WireUtils.clearBus();
+        return -1;
+    }
+
+    uint32_t old_seconds = seconds;
+    uint32_t now = dt.getUnixTime();
+    if (now != seconds)
+    {
+        seconds = now;
+        dbprintf("updateSeconds: updated seconds from %lu to %lu\n", old_seconds, now);
+    }
+
+    return 0;
 }
 
 void recievePacket(AsyncUDPPacket aup)
@@ -150,8 +221,10 @@ void recievePacket(AsyncUDPPacket aup)
     //
     ntp.flags = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_SERVER);
     ntp.stratum = 1;
-    ntp.precision = -18;
-    // TODO: root delay, and root dispersion
+    ntp.precision = precision;
+    // TODO: compute actual root delay, and root dispersion
+    ntp.delay      = (uint32)(0.000001 * 65536);
+    ntp.dispersion = dispersion;
     strncpy((char*)ntp.ref_id, REF_ID, sizeof(ntp.ref_id));
     ntp.orig_time = ntp.xmit_time;
     ntp.recv_time = recv_time;
@@ -174,21 +247,24 @@ void recievePacket(AsyncUDPPacket aup)
 void setup()
 {
     dbbegin(115200);
-    dbprintln("");
-    dbprintln("Startup!");
+    dbprintln("\n\nStartup!");
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(LED_PIN,  OUTPUT);
 
-    seconds             = 0;
-    cycles              = 0;
-    max_cycles          = 0;
-    min_cycles          = 0;
-    last_cpu_cycles     = 0;
+    seconds              = 0;
+    max_micros           = 0;
+    min_micros           = 0;
+    last_micros          = 0;
+#if defined(MICROS_HISTORY_SIZE)
+    micros_history_count = 0;
+    micros_history_index = 0;
+#endif
 
-    attachInterrupt(SYNC_PIN, &oneSecondInterrupt, FALLING);
-    dbprintf("delay 2 seconds to make sure we have a clean cycle count\n");
-    delay(2000);
+    WiFiManager wifi;
+    //wifi.setDebugOutput(false);
+    String ssid = "SynchroClock" + String(ESP.getChipId());
+    wifi.autoConnect(ssid.c_str(), NULL);
 
     Wire.begin();
     Wire.setClockStretchLimit(1500);
@@ -204,6 +280,13 @@ void setup()
         delay(1000);
     }
 
+    attachInterrupt(SYNC_PIN, &oneSecondInterrupt, FALLING);
+    dbprintf("delay %d seconds to make sure we have a clean last_micros value\n", WARMUP_SECONDS);
+    delay(WARMUP_SECONDS*1000);
+
+    precision = computePrecision();
+
+#if 0
     waitForEdge(SYNC_EDGE_FALLING);
     delay(2); // for some reason we get errors if we read too soon after the falling edge.
     DS3231DateTime dt;
@@ -218,11 +301,7 @@ void setup()
         delay(1000);
     }
     seconds = dt.getUnixTime();
-
-    WiFiManager wifi;
-    //wifi.setDebugOutput(false);
-    String ssid = "SynchroClock" + String(ESP.getChipId());
-    wifi.autoConnect(ssid.c_str(), NULL);
+#endif
 
     //
     // initialize UDP handler
@@ -237,7 +316,6 @@ void setup()
 }
 
 
-
 void loop()
 {
     static int last_sync_level;
@@ -248,32 +326,33 @@ void loop()
     int sync_level = digitalRead(SYNC_PIN);
     if (sync_level == 0 && sync_level != last_sync_level)
     {
-        DS3231DateTime dt;
-        delay(2); // for some reason we get errors if we read too soon after the falling edge.
-        if (rtc.readTime(dt))
-        {
-            dbprintln("loop: FAILED to read RTC, clearing bus & not checking seconds!");
-            WireUtils.clearBus();
-        }
-        else
-        {
-            uint32_t old_seconds = seconds;
-            uint32_t now = dt.getUnixTime();
-            if (now != seconds)
-            {
-                seconds = now;
-                dbprintf("loop: updated seconds from %lu to %lu\n", old_seconds, now);
-            }
-        }
+        delay(2); // for some reason I get errors if we read too soon after the falling edge.
+        updateSeconds();
     }
     last_sync_level = sync_level;
 
-#if 1
     static uint32_t last_seconds;
-    if (seconds != last_seconds && (seconds % 300) == 0)
+    if (seconds != last_seconds && (seconds % 60) == 0)
     {
-        dbprintf("min_cycles:%lu max_cycles:%lu cycles:%lu\n", min_cycles, max_cycles, cycles);
+#if defined(MICROS_HISTORY_SIZE)
+        double mean = 0.0;
+        for (int i = 0; i < micros_history_count; ++i)
+        {
+            mean += us2s(micros_history[i]);
+        }
+        mean = mean / micros_history_count;
+
+        double stdev = 0.0;
+        for (int i = 0; i < micros_history_count; ++i)
+        {
+            stdev += pow(us2s(micros_history[i]) - mean, 2);
+        }
+        stdev = sqrt(stdev / micros_history_count);
+        dbprintf("mean:%f stdev:%f ", mean, stdev);
+#endif
+        double disp = us2s(max(abs(1000000-max_micros), abs(1000000-min_micros)));
+        dbprintf("min:%f max:%f jitter:%f dispersion:%f\n", us2s(min_micros), us2s(max_micros), us2s(max_micros-min_micros), disp);
+        dispersion = (uint32_t)(disp * 65536.0);
     }
     last_seconds = seconds;
-#endif
 }
