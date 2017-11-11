@@ -20,19 +20,30 @@
  *      Author: liebman
  */
 
+//#define USE_ASYNC_UDP
+
 #ifndef _ESPNTPServer_H_
 #define _ESPNTPServer_H_
 #include "Arduino.h"
+#include "Ticker.h"
 #include "Wire.h"
-#include "DS3231.h"
-#include "ESPAsyncUDP.h"
 #include "WiFiManager.h"
+#include "SoftwareSerial.h"
+#include "MicroNMEA.h"
+#include <time.h>
 
+#if defined(USE_ASYNC_UDP)
+#include "ESPAsyncUDP.h"
+#else
+#include <WiFiUdp.h>
+#endif
 
 // pin definitions
-#define LED_PIN                D7   // (GPIO13) LED on pin, active low
-#define SYNC_PIN               D5   // (GPIO14) pin tied to 1hz square wave from RTC
-#define CONFIG_PIN             D6   // (GPIO12) button tied to pin
+#define LED_PIN                BUILTIN_LED   // LED on pin, active low
+#define SYNC_PIN               D5   // (GPIO14) pin tied to 1hz square wave from GPS
+#define GPS_RX_PIN             D6   // (GPIO12)
+#define GPS_TX_PIN             D7   // (GPIO13)
+#define GPS_EN_PIN             D4   // (GPIO2)
 
 #define NTP_PORT               123
 
@@ -40,10 +51,14 @@
 #define SYNC_EDGE_FALLING      0
 
 #define WARMUP_SECONDS         2
-#define MICROS_HISTORY_SIZE    1000
 #define PRECISION_COUNT        10000
+#define MICROS_PER_SEC         1000000
+#define SERIAL_BUFFER_SIZE     256
+#define NMEA_BUFFER_SIZE       128
+#define VALIDITY_CHECK_MS      1100
+//#define MICROS_HISTORY_SIZE    1000
 
-#define us2s(x) (((double)x)/1000000.0) // microseconds to seconds
+#define us2s(x) (((double)x)/(double)MICROS_PER_SEC) // microseconds to seconds
 
 typedef struct ntp_time
 {
