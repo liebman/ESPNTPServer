@@ -480,9 +480,9 @@ void loop()
 #endif
         double disp = us2s(MAX(abs(MICROS_PER_SEC-max_micros), abs(MICROS_PER_SEC-min_micros)));
         dispersion = (uint32_t)(disp * 65536.0);
-        dbprintf("min:%lu max:%lu jitter:%lu valid_count:%lu valid:%s\n",
+        dbprintf("min:%lu max:%lu jitter:%lu valid_count:%lu valid:%s heap:%ld\n",
                 min_micros, max_micros, max_micros-min_micros,
-                valid_count, valid?"true":"false");
+                valid_count, valid?"true":"false", ESP.getFreeHeap());
     }
     last_seconds = seconds;
 
@@ -495,6 +495,7 @@ void loop()
     const char* s = ctime(&last_seconds);
     display.drawString(0, 0,  WiFi.localIP().toString());
     display.drawString(0, 10, s);
+    display.drawString(0, 20, "Heap Free:"+String(ESP.getFreeHeap()));
     // write the buffer to the display
     display.display();
 
