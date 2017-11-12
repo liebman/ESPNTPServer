@@ -56,6 +56,10 @@ SoftwareSerial gps(GPS_RX_PIN, GPS_TX_PIN, false, SERIAL_BUFFER_SIZE);
 char nmeaBuffer[NMEA_BUFFER_SIZE];
 MicroNMEA nmea(nmeaBuffer, NMEA_BUFFER_SIZE);
 
+#if defined(USE_OLED_DISPLAY)
+SSD1306Wire  display(0x3c, SDA, SCL);
+#endif
+
 #ifdef NTP_PACKET_DEBUG
 void dumpNTPPacket(NTPPacket* ntp)
 {
@@ -142,18 +146,6 @@ void oneSecondInterrupt()
 #endif
 }
 
-void waitForEdge(int edge)
-{
-    while (digitalRead(SYNC_PIN) == edge)
-    {
-        delay(0);
-    }
-    while (digitalRead(SYNC_PIN) != edge)
-    {
-        delay(0);
-    }
-}
-
 void getNTPTime(NTPTime *time)
 {
     time->seconds         = toNTP(seconds);
@@ -197,6 +189,7 @@ void recievePacket(AsyncUDPPacket aup)
 void recievePacket()
 #endif
 {
+    static NTPPacket ntp;
     NTPTime recv_time;
     getNTPTime(&recv_time);
 #if defined(USE_ASYNC_UDP)
@@ -219,7 +212,6 @@ void recievePacket()
         return;
     }
 
-    NTPPacket ntp;
 #if defined(USE_ASYNC_UDP)
     memcpy(&ntp, aup.data(), sizeof(ntp));
 #else
@@ -278,11 +270,6 @@ void recievePacket()
 void badChecksum(MicroNMEA& mn)
 {
     const char* s = mn.getSentence();
-    if (s == NULL || s[0] == '\0')
-    {
-        //dbprintf("badChecksum: NULL sentence!!!!");
-        return;
-    }
     dbprintf("badChecksum: (length:%d 1stbyte:%02x) '%s'\n", strlen(s), s[0], s);
 }
 
@@ -296,7 +283,7 @@ void unknownSentence(MicroNMEA& mn)
     }
 
     sentence_unknown = true;
-    dbprintf("unknownSentence: %s\n", mn.getSentence());
+    dbprintf("unknownSentence: %s\n", sentence);
 }
 
 void resetGPS()
@@ -346,7 +333,7 @@ void processGPS()
         {
             if (nmea.isValid() && nmea.getYear() > 2000)
             {
-                struct tm tm;
+                static struct tm tm;
                 tm.tm_year = nmea.getYear()  - 1900;
                 tm.tm_mon  = nmea.getMonth() - 1;
                 tm.tm_mday = nmea.getDay();
@@ -382,7 +369,7 @@ void processGPS()
 
 void sendSentence(const char* sentence)
 {
-    char cksum[3];
+    static char cksum[3];
     MicroNMEA::generateChecksum(sentence, cksum);
     cksum[2] = '\0';
     dbprintf("sendSentence: '%s*%s'\n", sentence, cksum);
@@ -411,13 +398,21 @@ void setup()
     micros_history_index = 0;
 #endif
 
+#if !defined(USE_NO_WIFI)
     WiFiManager wifi;
     //wifi.setDebugOutput(false);
     String ssid = "SynchroClock" + String(ESP.getChipId());
     wifi.autoConnect(ssid.c_str(), NULL);
+#endif
 
-    Wire.begin();
-    Wire.setClockStretchLimit(1500);
+#if defined(USE_OLED_DISPLAY)
+    if (!display.init())
+    {
+        dbprintln("display.init() failed!");
+    }
+    display.flipScreenVertically();
+    display.setFont(ArialMT_Plain_10);
+#endif
 
     gps.begin(9600);
     nmea.setBadChecksumHandler(&badChecksum);
@@ -432,7 +427,7 @@ void setup()
 #if defined(USE_ASYNC_UDP)
     while(!udp.listen(NTP_PORT)) {
 #else
-        while(!udp.begin(NTP_PORT)) {
+    while(!udp.begin(NTP_PORT)) {
 #endif
         dbprintf("setup: failed to listen on port %d!  Will retry in a bit...\n", NTP_PORT);
         delay(1000);
@@ -483,12 +478,25 @@ void loop()
         stdev = sqrt(stdev / micros_history_count);
         dbprintf("mean:%f stdev:%f ", mean, stdev);
 #endif
-        double disp = us2s(max(abs(MICROS_PER_SEC-max_micros), abs(MICROS_PER_SEC-min_micros)));
-        dbprintf("min:%f max:%f jitter:%f dispersion:%f valid_count:%lu valid:%s\n",
-                us2s(min_micros), us2s(max_micros), us2s(max_micros-min_micros), disp,
-                valid_count, valid?"true":"false");
+        double disp = us2s(MAX(abs(MICROS_PER_SEC-max_micros), abs(MICROS_PER_SEC-min_micros)));
         dispersion = (uint32_t)(disp * 65536.0);
+        dbprintf("min:%lu max:%lu jitter:%lu valid_count:%lu valid:%s\n",
+                min_micros, max_micros, max_micros-min_micros,
+                valid_count, valid?"true":"false");
     }
     last_seconds = seconds;
-    //delay(1);
+
+    //
+    // Update the display
+    //
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+    const char* s = ctime(&last_seconds);
+    display.drawString(0, 0,  WiFi.localIP().toString());
+    display.drawString(0, 10, s);
+    // write the buffer to the display
+    display.display();
+
+    delay(1);
 }

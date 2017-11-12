@@ -27,7 +27,7 @@
 #include <ESP8266WiFi.h>
 
 #define USE_TCP
-#define USE_NETWORK
+//#define USE_NETWORK
 
 #ifdef USE_NETWORK
 #ifdef USE_TCP
@@ -63,8 +63,9 @@ private:
     uint16_t    _port;
     uint16_t    _failed;
     char        _buffer[LOGGER_BUFFER_SIZE];
-
+#ifdef USE_NETWORK
     void send(const char* message);
+#endif
 };
 
 extern Logger logger;

@@ -20,17 +20,24 @@
  *      Author: liebman
  */
 
-//#define USE_ASYNC_UDP
+#define USE_ASYNC_UDP
+#define USE_OLED_DISPLAY
+//#define USE_NO_WIFI
 
 #ifndef _ESPNTPServer_H_
 #define _ESPNTPServer_H_
 #include "Arduino.h"
 #include "Ticker.h"
-#include "Wire.h"
+#if !defined(USE_NO_WIFI)
 #include "WiFiManager.h"
+#endif
 #include "SoftwareSerial.h"
 #include "MicroNMEA.h"
 #include <time.h>
+
+#if defined(USE_OLED_DISPLAY)
+#include "SSD1306Wire.h"
+#endif
 
 #if defined(USE_ASYNC_UDP)
 #include "ESPAsyncUDP.h"
@@ -53,7 +60,7 @@
 #define WARMUP_SECONDS         2
 #define PRECISION_COUNT        10000
 #define MICROS_PER_SEC         1000000
-#define SERIAL_BUFFER_SIZE     256
+#define SERIAL_BUFFER_SIZE     128
 #define NMEA_BUFFER_SIZE       128
 #define VALIDITY_CHECK_MS      1100
 //#define MICROS_HISTORY_SIZE    1000
@@ -112,7 +119,7 @@ typedef struct ntp_packet
 #define toNTP(t)        ((uint32_t)t+SEVENTY_YEARS)
 
 //  simple versions - we don't worry about side effects
-#define max(a, b)   ((a) < (b) ? (b) : (a))
-#define min(a, b)   ((a) < (b) ? (a) : (b))
+#define MAX(a, b)   ((a) < (b) ? (b) : (a))
+#define MIN(a, b)   ((a) < (b) ? (a) : (b))
 
 #endif /* _ESPNTPServer_H_ */

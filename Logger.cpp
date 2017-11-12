@@ -76,7 +76,9 @@ void Logger::println(const char* message)
     snprintf(_buffer, LOGGER_BUFFER_SIZE-1, "%s\n", message);
     Serial.print(_buffer);
     Serial.flush();
+#if defined(USE_NETWORK)
     send(_buffer);
+#endif
 }
 
 extern int vsnprintf(char* buffer, size_t size, const char* fmt, va_list args);
@@ -91,7 +93,9 @@ void Logger::printf(const char* fmt, ...)
 
     Serial.print(_buffer);
     Serial.flush();
+#if defined(USE_NETWORK)
     send(_buffer);
+#endif
 }
 
 void Logger::flush()
@@ -105,9 +109,9 @@ void Logger::flush()
 #endif
 }
 
+#if defined(USE_NETWORK)
 void Logger::send(const char* message)
 {
-#if defined(USE_NETWORK)
     // if we are not configured for TCP then just return
     if (_host == NULL)
     {
@@ -153,7 +157,7 @@ void Logger::send(const char* message)
         dbprintln("Logger::log failed to send packet!");
     }
 #endif
-#endif
 }
+#endif
 
 Logger logger;
