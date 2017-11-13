@@ -27,16 +27,20 @@
 #include "Logger.h"
 
 Ticker            validityTimer;
-uint32_t          valid_count;
 bool              valid;
+bool              gps_valid;
+uint32_t          pps_valid_count;
+volatile uint32_t valid_count;  // how many times we have gone from invalid to valid
 bool              sentence_unknown;
+uint32_t          bad_checksum_count;
+uint32_t          req_count;
+uint32_t          rsp_count;
 int8_t            precision;
 volatile uint32_t dispersion;
 
 volatile time_t   seconds;
 
 volatile uint32_t last_micros;
-volatile uint32_t micros_wraps;
 volatile uint32_t min_micros;
 volatile uint32_t max_micros;
 
@@ -53,12 +57,10 @@ WiFiUDP udp;
 #endif
 
 SoftwareSerial gps(GPS_RX_PIN, GPS_TX_PIN, false, SERIAL_BUFFER_SIZE);
-char nmeaBuffer[NMEA_BUFFER_SIZE];
-MicroNMEA nmea(nmeaBuffer, NMEA_BUFFER_SIZE);
+char           nmeaBuffer[NMEA_BUFFER_SIZE];
+MicroNMEA      nmea(nmeaBuffer, NMEA_BUFFER_SIZE);
 
-#if defined(USE_OLED_DISPLAY)
-SSD1306Wire  display(0x3c, SDA, SCL);
-#endif
+SSD1306Wire    display(0x3c, SDA, SCL);
 
 #ifdef NTP_PACKET_DEBUG
 void dumpNTPPacket(NTPPacket* ntp)
@@ -83,9 +85,11 @@ void dumpNTPPacket(NTPPacket* ntp)
 #define dumpNTPPacket(x)
 #endif
 
-void validityCheck()
+void invalidate()
 {
-    valid = false;
+    valid       = false;
+    gps_valid   = false;
+    last_micros = 0;
 }
 
 void oneSecondInterrupt()
@@ -93,9 +97,33 @@ void oneSecondInterrupt()
     uint32_t cur_micros = micros();
 
     //
+    // don't trust PPS if GPS is not valid.
+    //
+    if (!gps_valid)
+    {
+        return;
+    }
+
+    //
+    // if we are still counting down then keep waiting
+    //
+    if (pps_valid_count)
+    {
+        --pps_valid_count;
+        if (pps_valid_count == 0)
+        {
+            // clear stats and mark us valid
+            min_micros = 0;
+            max_micros = 0;
+            valid      = true;
+            ++valid_count;
+        }
+    }
+
+    //
     // restart the validity timer, if it runs out we invalidate our data.
     //
-    validityTimer.attach_ms(VALIDITY_CHECK_MS, &validityCheck);
+    validityTimer.attach_ms(VALIDITY_CHECK_MS, &invalidate);
 
     //
     // increment seconds
@@ -109,11 +137,6 @@ void oneSecondInterrupt()
     {
         last_micros = cur_micros;
         return;
-    }
-
-    if (cur_micros < last_micros)
-    {
-        ++micros_wraps;
     }
 
     uint32_t micros_count = cur_micros - last_micros;
@@ -148,7 +171,7 @@ void oneSecondInterrupt()
 
 void getNTPTime(NTPTime *time)
 {
-    time->seconds         = toNTP(seconds);
+    time->seconds = toNTP(seconds);
     uint32_t cur_micros   = micros();
     uint32_t micros_delta = cur_micros - last_micros;
 
@@ -162,9 +185,8 @@ void getNTPTime(NTPTime *time)
         return;
     }
 
-    double percent      = us2s(micros_delta);
-    //dbprintf("micros_delta: %lu percent: %lf\n", micros_delta, percent);
-    time->fraction      = (uint32_t)(percent * (double)4294967296L);
+    double percent = us2s(micros_delta);
+    time->fraction = (uint32_t)(percent * (double)4294967296L);
 }
 
 int8_t computePrecision()
@@ -175,10 +197,10 @@ int8_t computePrecision()
     {
         getNTPTime(&t);
     }
-    unsigned long end = micros();
-    double total      = (double)(end - start) / 1000000.0;
-    double time       = total / PRECISION_COUNT;
-    double prec       = log2(time);
+    unsigned long end   = micros();
+    double        total = (double)(end - start) / 1000000.0;
+    double        time  = total / PRECISION_COUNT;
+    double        prec  = log2(time);
     dbprintf("computePrecision: total:%f time:%f prec:%f\n", total, time, prec);
     return (int8_t)prec;
 }
@@ -189,8 +211,9 @@ void recievePacket(AsyncUDPPacket aup)
 void recievePacket()
 #endif
 {
-    static NTPPacket ntp;
-    NTPTime recv_time;
+    ++req_count;
+    NTPPacket ntp;
+    NTPTime   recv_time;
     getNTPTime(&recv_time);
 #if defined(USE_ASYNC_UDP)
     if (aup.length() != sizeof(NTPPacket))
@@ -233,15 +256,15 @@ void recievePacket()
     //
     // Build the response
     //
-    ntp.flags = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_SERVER);
-    ntp.stratum = 1;
-    ntp.precision = precision;
+    ntp.flags      = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_SERVER);
+    ntp.stratum    = 1;
+    ntp.precision  = precision;
     // TODO: compute actual root delay, and root dispersion
-    ntp.delay      = (uint32)(0.000001 * 65536);
+    ntp.delay = (uint32)(0.000001 * 65536);
     ntp.dispersion = dispersion;
     strncpy((char*)ntp.ref_id, REF_ID, sizeof(ntp.ref_id));
-    ntp.orig_time = ntp.xmit_time;
-    ntp.recv_time = recv_time;
+    ntp.orig_time  = ntp.xmit_time;
+    ntp.recv_time  = recv_time;
     getNTPTime(&(ntp.ref_time));
     dumpNTPPacket(&ntp);
     ntp.delay              = htonl(ntp.delay);
@@ -257,9 +280,10 @@ void recievePacket()
     ntp.xmit_time.fraction = htonl(ntp.xmit_time.fraction);
 #if defined(USE_ASYNC_UDP)
     aup.write((uint8_t*)&ntp, sizeof(ntp));
+    ++rsp_count;
 #else
     IPAddress address = udp.remoteIP();
-    uint16_t  port    = udp.remotePort();
+    uint16_t port     = udp.remotePort();
     udp.beginPacket(address, port);
     udp.write((uint8_t*)&ntp, sizeof(ntp));
     udp.flush();
@@ -269,21 +293,21 @@ void recievePacket()
 
 void badChecksum(MicroNMEA& mn)
 {
-    const char* s = mn.getSentence();
-    dbprintf("badChecksum: (length:%d 1stbyte:%02x) '%s'\n", strlen(s), s[0], s);
+    ++bad_checksum_count;
+    dbprintf("badChecksum: '%s'\n", mn.getSentence());
 }
 
 void unknownSentence(MicroNMEA& mn)
 {
     const char* sentence = mn.getSentence();
+    dbprintf("unknownSentence: %s\n", sentence);
+
     if (!strncmp("$PMTK", sentence, 5))
     {
-        dbprintf("unknownSentence: %s\n", sentence);
         return;
     }
 
     sentence_unknown = true;
-    dbprintf("unknownSentence: %s\n", sentence);
 }
 
 void resetGPS()
@@ -291,12 +315,15 @@ void resetGPS()
     dbprintln("resetGPS: starting!");
     // Empty input buffer
     while (gps.available())
-    gps.read();
+    {
+        gps.read();
+    }
 
     digitalWrite(GPS_EN_PIN, LOW);
     delay(100);
     digitalWrite(GPS_EN_PIN, HIGH);
 
+#if 0
     dbprintln("resetGPS: waiting on first sentence");
     dbflush();
 
@@ -316,51 +343,62 @@ void resetGPS()
             }
         }
     }
+#endif
 }
 
 void processGPS()
 {
-    static boolean last_valid;
-    if (last_valid && !valid)
+    static boolean last_valid     = false;
+    static boolean last_gps_valid = false;
+
+    //
+    // Print valid or invalid if stats has changed.
+    //
+    if ((last_valid && !valid) || (last_gps_valid && !gps_valid))
     {
         dbprintln("INVALID!");
     }
+    else if (!last_valid && valid)
+    {
+        dbprintln("VALID!");
+    }
     last_valid = valid;
+    last_gps_valid = gps_valid;
 
-    while(gps.available() > 0)
+    while (gps.available() > 0)
     {
         if (nmea.process(gps.read()))
         {
-            if (nmea.isValid() && nmea.getYear() > 2000)
+            //
+            // if it was a GGA and its valid then check and maybe update the time
+            //
+            const char * id = nmea.getMessageID();
+            if (nmea.isValid() && nmea.getYear() > 2000 && strcmp("GGA", id) == 0)
             {
                 static struct tm tm;
-                tm.tm_year = nmea.getYear()  - 1900;
-                tm.tm_mon  = nmea.getMonth() - 1;
-                tm.tm_mday = nmea.getDay();
-                tm.tm_hour = nmea.getHour();
-                tm.tm_min  = nmea.getMinute();
-                tm.tm_sec  = nmea.getSecond();
+                tm.tm_year         = nmea.getYear() - 1900;
+                tm.tm_mon          = nmea.getMonth() - 1;
+                tm.tm_mday         = nmea.getDay();
+                tm.tm_hour         = nmea.getHour();
+                tm.tm_min          = nmea.getMinute();
+                tm.tm_sec          = nmea.getSecond();
                 time_t new_seconds = mktime(&tm);
 
                 time_t old_seconds = seconds;
                 if (old_seconds != new_seconds)
                 {
                     seconds = new_seconds;
-                    dbprintf("adjusting seconds from %lu to %lu\n", old_seconds, new_seconds);
+                    dbprintf("%010lu: %s adjusting seconds from %lu to %lu\n", millis(), nmea.getMessageID(), old_seconds, new_seconds);
                 }
 
                 //
-                // if we were not valid, we are now
+                // if gps was not valid, it is now
                 //
-                if (!valid)
+                if (!gps_valid)
                 {
-                    // clear stats and mark us valid
-                    last_micros = 0;
-                    min_micros  = 0;
-                    max_micros  = 0;
-                    valid = true;
-                    ++valid_count;
-                    dbprintln("VALID!");
+                    gps_valid       = true;
+                    pps_valid_count = PPS_VALID_COUNT;
+                    dbprintln("gps valid!");
                 }
             }
         }
@@ -379,20 +417,21 @@ void sendSentence(const char* sentence)
 
 void setup()
 {
+    delay(5000); // delay for IDE to re-open serial
     dbbegin(115200);
     dbprintln("\n\nStartup!");
 
     pinMode(SYNC_PIN, INPUT);
 #if defined(LED_PIN)
-    pinMode(LED_PIN,  OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
 #endif
 
-    valid                = false;
-    valid_count          = 0;
-    seconds              = 0;
-    max_micros           = 0;
-    min_micros           = 0;
-    last_micros          = 0;
+    valid       = false;
+    valid_count = 0;
+    seconds     = 0;
+    max_micros  = 0;
+    min_micros  = 0;
+    last_micros = 0;
 #if defined(MICROS_HISTORY_SIZE)
     micros_history_count = 0;
     micros_history_index = 0;
@@ -400,19 +439,17 @@ void setup()
 
 #if !defined(USE_NO_WIFI)
     WiFiManager wifi;
-    //wifi.setDebugOutput(false);
+    wifi.setDebugOutput(false);
     String ssid = "SynchroClock" + String(ESP.getChipId());
     wifi.autoConnect(ssid.c_str(), NULL);
 #endif
 
-#if defined(USE_OLED_DISPLAY)
     if (!display.init())
     {
         dbprintln("display.init() failed!");
     }
     display.flipScreenVertically();
     display.setFont(ArialMT_Plain_10);
-#endif
 
     gps.begin(9600);
     nmea.setBadChecksumHandler(&badChecksum);
@@ -425,9 +462,11 @@ void setup()
     // initialize UDP handler
     //
 #if defined(USE_ASYNC_UDP)
-    while(!udp.listen(NTP_PORT)) {
+    while (!udp.listen(NTP_PORT))
+    {
 #else
-    while(!udp.begin(NTP_PORT)) {
+        while(!udp.begin(NTP_PORT))
+        {
 #endif
         dbprintf("setup: failed to listen on port %d!  Will retry in a bit...\n", NTP_PORT);
         delay(1000);
@@ -459,45 +498,55 @@ void loop()
     }
 
     static time_t last_seconds;
-    if (seconds != last_seconds && (seconds % 60) == 0)
+    if (seconds != last_seconds)
     {
+        if (seconds != last_seconds && ((seconds % 60) == 0 || pps_valid_count))
+        {
 
 #if defined(MICROS_HISTORY_SIZE)
-        double mean = 0.0;
-        for (int i = 0; i < micros_history_count; ++i)
-        {
-            mean += us2s(micros_history[i]);
-        }
-        mean = mean / micros_history_count;
+            double mean = 0.0;
+            for (int i = 0; i < micros_history_count; ++i)
+            {
+                mean += us2s(micros_history[i]);
+            }
+            mean = mean / micros_history_count;
 
-        double stdev = 0.0;
-        for (int i = 0; i < micros_history_count; ++i)
-        {
-            stdev += pow(us2s(micros_history[i]) - mean, 2);
-        }
-        stdev = sqrt(stdev / micros_history_count);
-        dbprintf("mean:%f stdev:%f ", mean, stdev);
+            double stdev = 0.0;
+            for (int i = 0; i < micros_history_count; ++i)
+            {
+                stdev += pow(us2s(micros_history[i]) - mean, 2);
+            }
+            stdev = sqrt(stdev / micros_history_count);
+            dbprintf("mean:%f stdev:%f ", mean, stdev);
 #endif
-        double disp = us2s(MAX(abs(MICROS_PER_SEC-max_micros), abs(MICROS_PER_SEC-min_micros)));
-        dispersion = (uint32_t)(disp * 65536.0);
-        dbprintf("min:%lu max:%lu jitter:%lu valid_count:%lu valid:%s heap:%ld\n",
-                min_micros, max_micros, max_micros-min_micros,
-                valid_count, valid?"true":"false", ESP.getFreeHeap());
+            double disp = us2s(MAX(abs(MICROS_PER_SEC-max_micros), abs(MICROS_PER_SEC-min_micros)));
+            dispersion  = (uint32_t)(disp * 65536.0);
+            dbprintf("min:%lu max:%lu jitter:%lu valid_count:%lu valid:%s numsat:%d heap:%ld pps_valid_count:%d badcs: %lu\n", min_micros, max_micros,
+                    max_micros - min_micros, valid_count, valid ? "true" : "false", nmea.getNumSatellites(), ESP.getFreeHeap(), pps_valid_count,
+                    bad_checksum_count);
+        }
+
+        if (seconds < last_seconds)
+        {
+            dbprintf("OOPS: time went backwards: last:%lu now:%lu\n", last_seconds, seconds);
+        }
+
+        //
+        // Update the display
+        //
+        display.clear();
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setFont(ArialMT_Plain_10);
+        const char* current_time = ctime(&last_seconds);
+        display.drawString(0, 0,  current_time);
+        display.drawString(0, 10, "Address:    "+WiFi.localIP().toString());
+        display.drawString(0, 20, "Sat Count: " + String(nmea.getNumSatellites()));
+        display.drawString(0, 30, "Requests:  " + String(req_count));
+        display.drawString(0, 40, "Responses: " + String(rsp_count));
+        // write the buffer to the display
+        display.display();
     }
+
     last_seconds = seconds;
-
-    //
-    // Update the display
-    //
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
-    const char* s = ctime(&last_seconds);
-    display.drawString(0, 0,  WiFi.localIP().toString());
-    display.drawString(0, 10, s);
-    display.drawString(0, 20, "Heap Free:"+String(ESP.getFreeHeap()));
-    // write the buffer to the display
-    display.display();
-
     delay(1);
 }

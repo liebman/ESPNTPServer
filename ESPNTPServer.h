@@ -21,7 +21,6 @@
  */
 
 #define USE_ASYNC_UDP
-#define USE_OLED_DISPLAY
 //#define USE_NO_WIFI
 
 #ifndef _ESPNTPServer_H_
@@ -35,9 +34,7 @@
 #include "MicroNMEA.h"
 #include <time.h>
 
-#if defined(USE_OLED_DISPLAY)
 #include "SSD1306Wire.h"
-#endif
 
 #if defined(USE_ASYNC_UDP)
 #include "ESPAsyncUDP.h"
@@ -63,6 +60,7 @@
 #define SERIAL_BUFFER_SIZE     128
 #define NMEA_BUFFER_SIZE       128
 #define VALIDITY_CHECK_MS      1100
+#define PPS_VALID_COUNT        60   // must have at least this many "good" PPS interrupts to be valid
 //#define MICROS_HISTORY_SIZE    1000
 
 #define us2s(x) (((double)x)/(double)MICROS_PER_SEC) // microseconds to seconds
