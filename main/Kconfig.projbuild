@@ -1,0 +1,17 @@
+menu "ESP GPS NTP Server Configuration"
+
+choice WPS_TYPE
+    prompt "WPS mode"
+    default WPS_TYPE_PBC
+    help
+	WPS type for the esp32 to use.
+
+config WPS_TYPE_PBC
+    bool "PBC"
+config WPS_TYPE_PIN
+    bool "PIN"
+config WPS_TYPE_DISABLE
+    bool "disable"
+endchoice
+
+endmenu
