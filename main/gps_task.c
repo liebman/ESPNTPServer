@@ -473,7 +473,7 @@ static void gps_task()
 
 void start_gps()
 {
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, CONFIG_GPS_LOG_LEVEL);
 
     xTaskCreatePinnedToCore(gps_task, "gps_task", 1024*2, NULL, GPS_TASK_PRI, NULL, 1);
 

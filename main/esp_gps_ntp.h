@@ -7,6 +7,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE // we have separate config choices for all app parts
 #include "esp_log.h"
 
 #ifndef MAIN_ESP_GPS_NTP_H_

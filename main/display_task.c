@@ -125,7 +125,7 @@ static void dsp_task()
 
 void start_display()
 {
-    esp_log_level_set(TAG,        ESP_LOG_INFO);
+    esp_log_level_set(TAG,        CONFIG_DISPLAY_LOG_LEVEL);
     esp_log_level_set("u8g2_hal", ESP_LOG_INFO);
 
     xTaskCreatePinnedToCore(dsp_task, "dsp_task", 1024*4, NULL, DSP_TASK_PRI, NULL, 1);

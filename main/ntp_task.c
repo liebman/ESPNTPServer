@@ -249,7 +249,7 @@ static void ntp_task()
 
 void start_ntp()
 {
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, CONFIG_NTP_LOG_LEVEL);
 
     xTaskCreatePinnedToCore(ntp_task,        "ntp_task",        1024*2, NULL, NTP_TASK_PRI, NULL, 1);
 }

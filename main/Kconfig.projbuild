@@ -14,4 +14,121 @@ config WPS_TYPE_DISABLE
     bool "disable"
 endchoice
 
+choice APP_LOG_LEVEL
+    prompt "APP Log Level"
+    default APP_LOG_LEVEL_INFO
+    help
+    Logging level for APP main
+
+config APP_LOG_LEVEL_NONE
+   bool "No output"
+config APP_LOG_LEVEL_ERROR
+   bool "Error"
+config APP_LOG_LEVEL_WARN
+   bool "Warning"
+config APP_LOG_LEVEL_INFO
+   bool "Info"
+config APP_LOG_LEVEL_DEBUG
+   bool "Debug"
+config APP_LOG_LEVEL_VERBOSE
+   bool "Verbose"
+endchoice
+
+config APP_LOG_LEVEL
+    int
+    default 0 if APP_LOG_LEVEL_NONE
+    default 1 if APP_LOG_LEVEL_ERROR
+    default 2 if APP_LOG_LEVEL_WARN
+    default 3 if APP_LOG_LEVEL_INFO
+    default 4 if APP_LOG_LEVEL_DEBUG
+    default 5 if APP_LOG_LEVEL_VERBOSE
+
+
+choice GPS_LOG_LEVEL
+    prompt "GPS Log Level"
+    default GPS_LOG_LEVEL_INFO
+    help
+    Logging level for GPS task
+
+config GPS_LOG_LEVEL_NONE
+   bool "No output"
+config GPS_LOG_LEVEL_ERROR
+   bool "Error"
+config GPS_LOG_LEVEL_WARN
+   bool "Warning"
+config GPS_LOG_LEVEL_INFO
+   bool "Info"
+config GPS_LOG_LEVEL_DEBUG
+   bool "Debug"
+config GPS_LOG_LEVEL_VERBOSE
+   bool "Verbose"
+endchoice
+
+config GPS_LOG_LEVEL
+    int
+    default 0 if GPS_LOG_LEVEL_NONE
+    default 1 if GPS_LOG_LEVEL_ERROR
+    default 2 if GPS_LOG_LEVEL_WARN
+    default 3 if GPS_LOG_LEVEL_INFO
+    default 4 if GPS_LOG_LEVEL_DEBUG
+    default 5 if GPS_LOG_LEVEL_VERBOSE
+
+choice NTP_LOG_LEVEL
+    prompt "NTP Log Level"
+    default NTP_LOG_LEVEL_INFO
+    help
+    Logging level for NTP task
+
+config NTP_LOG_LEVEL_NONE
+   bool "No output"
+config NTP_LOG_LEVEL_ERROR
+   bool "Error"
+config NTP_LOG_LEVEL_WARN
+   bool "Warning"
+config NTP_LOG_LEVEL_INFO
+   bool "Info"
+config NTP_LOG_LEVEL_DEBUG
+   bool "Debug"
+config NTP_LOG_LEVEL_VERBOSE
+   bool "Verbose"
+endchoice
+
+config NTP_LOG_LEVEL
+    int
+    default 0 if NTP_LOG_LEVEL_NONE
+    default 1 if NTP_LOG_LEVEL_ERROR
+    default 2 if NTP_LOG_LEVEL_WARN
+    default 3 if NTP_LOG_LEVEL_INFO
+    default 4 if NTP_LOG_LEVEL_DEBUG
+    default 5 if NTP_LOG_LEVEL_VERBOSE
+
+choice DISPLAY_LOG_LEVEL
+    prompt "DISPLAY Log Level"
+    default DISPLAY_LOG_LEVEL_INFO
+    help
+    Logging level for DISPLAY task
+
+config DISPLAY_LOG_LEVEL_NONE
+   bool "No output"
+config DISPLAY_LOG_LEVEL_ERROR
+   bool "Error"
+config DISPLAY_LOG_LEVEL_WARN
+   bool "Warning"
+config DISPLAY_LOG_LEVEL_INFO
+   bool "Info"
+config DISPLAY_LOG_LEVEL_DEBUG
+   bool "Debug"
+config DISPLAY_LOG_LEVEL_VERBOSE
+   bool "Verbose"
+endchoice
+
+config DISPLAY_LOG_LEVEL
+    int
+    default 0 if DISPLAY_LOG_LEVEL_NONE
+    default 1 if DISPLAY_LOG_LEVEL_ERROR
+    default 2 if DISPLAY_LOG_LEVEL_WARN
+    default 3 if DISPLAY_LOG_LEVEL_INFO
+    default 4 if DISPLAY_LOG_LEVEL_DEBUG
+    default 5 if DISPLAY_LOG_LEVEL_VERBOSE
+
 endmenu

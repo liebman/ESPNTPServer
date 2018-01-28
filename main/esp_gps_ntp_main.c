@@ -6,18 +6,16 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
+
+#include "esp_gps_ntp.h"
 #include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_system.h"
 
 #include "esp_wifi.h"
-#include "esp_log.h"
 #include "esp_wps.h"
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 
-#include "esp_gps_ntp.h"
 
 /*set wps mode via "make menuconfig"*/
 #if CONFIG_WPS_TYPE_PBC
@@ -123,19 +121,20 @@ micros_t IRAM_ATTR micros()
 
 void app_main()
 {
-    printf("ESP32 GPS NTP Server\n");
+    esp_log_level_set(TAG,        CONFIG_APP_LOG_LEVEL);
+    ESP_LOGI(TAG, "ESP32 GPS NTP Server");
 
     /* Print chip information */
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
-    printf("This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
+    ESP_LOGI(TAG, "This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
             chip_info.cores,
             (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
             (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
 
-    printf("silicon revision %d, ", chip_info.revision);
+    ESP_LOGI(TAG, "silicon revision %d, ", chip_info.revision);
 
-    printf("\n*****\nRUNNING on core %d\n*****\n", xPortGetCoreID());
+    ESP_LOGI(TAG, "***** RUNNING on core %d *****", xPortGetCoreID());
     fflush(stdout);
 
     /* Initialize NVS — it is used to store PHY calibration data */
