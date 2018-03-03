@@ -1,6 +1,12 @@
+.metadata
 .DS_Store
+.ino.cpp
+.project
+.cproject
+.settings
+Release
+Debug
+libraries
+core
 *.bak
 *-bak
-*.old
-build
-sdkconfig

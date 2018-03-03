@@ -1,9 +1,0 @@
-[submodule "components/u8g2"]
-	path = components/u8g2
-	url = https://github.com/olikraus/u8g2.git
-[submodule "components/minmea/minmea"]
-	path = components/minmea/minmea
-	url = https://github.com/kosma/minmea.git
-[submodule "components/esp32-snippets/esp32-snippets"]
-	path = components/esp32-snippets/esp32-snippets
-	url = https://github.com/nkolban/esp32-snippets.git
