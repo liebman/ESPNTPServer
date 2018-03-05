@@ -152,7 +152,7 @@ void GPS::process()
                         }
                         else
                         {
-                            logger.warning(TAG, "ignoring late NMEA time: '%s'",_nmea.getSentence());
+                            logger.debug(TAG, "ignoring late NMEA time: '%s'",_nmea.getSentence());
                         }
                     }
 
@@ -166,7 +166,7 @@ void GPS::process()
                     {
                         _valid_delay = VALID_DELAY;
                         _gps_valid       = true;
-                        logger.warning(TAG, "GPS valid!");
+                        logger.info(TAG, "GPS valid!");
                     }
                 }
             }
@@ -236,6 +236,16 @@ void ICACHE_RAM_ATTR GPS::pps()
     }
 
     //
+    // increment seconds
+    //
+    _seconds += 1;
+
+    //
+    // restart the validity timer, if it runs out we invalidate our data.
+    //
+    _pps_timer.attach_ms(VALID_TIMER_MS, &_timer_handler, &_invalidate);
+
+    //
     // if we are still counting down then keep waiting
     //
     if (_valid_delay)
@@ -244,22 +254,13 @@ void ICACHE_RAM_ATTR GPS::pps()
         if (_valid_delay == 0)
         {
             // clear stats and mark us valid
-            _min_micros = 0;
-            _max_micros = 0;
-            _valid      = true;
+            _min_micros  = 0;
+            _max_micros  = 0;
+            _valid       = true;
+            _valid_since = _seconds;
             ++_valid_count;
         }
     }
-
-    //
-    // restart the validity timer, if it runs out we invalidate our data.
-    //
-    _pps_timer.attach_ms(VALID_TIMER_MS, &_timer_handler, &_invalidate);
-
-    //
-    // increment seconds
-    //
-    _seconds += 1;
 
     //
     // the first time around we just initialize the last value

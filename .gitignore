@@ -10,3 +10,4 @@ libraries
 core
 *.bak
 *-bak
+spec.d

@@ -21,20 +21,15 @@
  */
 
 #include "ESPNTPServer.h"
-#include <lwip/def.h> // htonl() & ntohl()
+#include "Log.h"
+
 #include "GPS.h"
 #include "NTP.h"
-
-//#include "Logger.h"
+#include "Display.h"
 
 GPS gps(Serial, SYNC_PIN);
 NTP ntp(gps);
-
-#if defined(USE_OLED_DISPLAY)
-SSD1306Wire    display(0x3c, SDA_PIN, SCL_PIN);
-#endif
-
-#include "Log.h"
+Display display(gps, ntp, SDA_PIN, SCL_PIN);
 
 const char* SETUP_TAG = "setup";
 const char* LOOP_TAG  = "loop";
@@ -63,27 +58,10 @@ void setup()
     logger.setSize(256);
     logger.setPrint(&Serial1);
     logger.setPreFunc(&logTimeFirst);
-    logger.info(SETUP_TAG, "\nStartup!");
+    logger.info(SETUP_TAG, "Startup!");
 
-
-#if !defined(USE_NO_WIFI)
-    logger.info(SETUP_TAG, "initializing wifi");
-    WiFiManager wifi;
-    wifi.setDebugStream(Serial1);
-    //wifi.setDebugOutput(false);
-    String ssid = "SynchroClock" + String(ESP.getChipId());
-    wifi.autoConnect(ssid.c_str(), NULL);
-#endif
-
-#if defined(USE_OLED_DISPLAY)
     logger.info(SETUP_TAG, "initializing display");
-    if (!display.init())
-    {
-        logger.info(SETUP_TAG, "display.init() failed!");
-    }
-    display.flipScreenVertically();
-    display.setFont(ArialMT_Plain_10);
-#endif
+    display.begin();
 
     logger.info(SETUP_TAG, "initializing serial for GPS");
     Serial.begin(9600);
@@ -91,6 +69,24 @@ void setup()
 
     logger.info(SETUP_TAG, "initializing GPS");
     gps.begin();
+    display.process();
+
+#if !defined(USE_NO_WIFI)
+    logger.info(SETUP_TAG, "initializing wifi");
+#if 0
+    WiFiManager wifi;
+    wifi.setDebugStream(Serial1);
+    wifi.setDebugOutput(false);
+#else
+    WiFiManager wifi(Serial1);
+    wifi.setDebugOutput(true);
+#endif
+    wifi.setDebugOutput(true);
+    String ssid = "ESPNTPServer" + String(ESP.getChipId());
+    wifi.autoConnect(ssid.c_str(), NULL);
+#endif
+
+    display.process();
 
     logger.info(SETUP_TAG, "initializing NTP");
     ntp.begin();
@@ -98,10 +94,44 @@ void setup()
 
 void loop()
 {
-    static uint32_t min_loop;
-    static uint32_t max_loop;
-    static uint32_t last_loop;
-    uint32_t start_loop = millis();
+    static int last_wifi_status;
+    static IPAddress last_ip;
+
+    int wifi_status = WiFi.status();
+    if (wifi_status != last_wifi_status)
+    {
+        const char* status;
+        switch (wifi_status)
+        {
+            case WL_CONNECTED:
+                status = "CONNECTED";
+                break;
+            case WL_NO_SSID_AVAIL:
+                status = "NO_SSID";
+                break;
+            case WL_CONNECT_FAILED:
+                status = "FAILED";
+                break;
+            case WL_IDLE_STATUS:
+                status = "IDLE";
+                break;
+            case WL_DISCONNECTED:
+                status = "DISCONNECTED";
+                break;
+            default:
+                status = "<UNKNOWN>";
+                break;
+        }
+        logger.info(LOOP_TAG, "wifi status change %d -> %d '%s'", last_wifi_status, wifi_status, status);
+        last_wifi_status = wifi_status;
+    }
+
+    IPAddress ip = WiFi.localIP();
+    if (ip != last_ip)
+    {
+        logger.warning(LOOP_TAG, "ip address change %s -> %s", last_ip.toString().c_str(), ip.toString().c_str());
+        last_ip = ip;
+    }
 
     gps.process();
 
@@ -121,7 +151,7 @@ void loop()
                 tm.tm_min,
                 tm.tm_sec,
                 tv.tv_usec);
-        if (tv.tv_sec != last_seconds && ((tv.tv_sec % 60) == 0 || gps.getValidDelay()))
+        if (tv.tv_sec != last_seconds && ((tv.tv_sec % 300) == 0 || gps.getValidDelay()))
         {
             logger.info("loop", "jitter:%lu valid_count:%lu valid:%s gpsvalid:%s numsat:%d heap:%ld valid_delay:%d",
                     gps.getJitter(),
@@ -138,33 +168,8 @@ void loop()
             logger.warning(LOOP_TAG, "%s: OOPS: time went backwards: last:%lu now:%lu\n", ts, last_seconds, tv.tv_sec);
         }
 
-#if defined(USE_OLED_DISPLAY)
-        //
-        // Update the display
-        //
-        display.clear();
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
-        display.setFont(ArialMT_Plain_10);
-        display.drawString(0, 0,  ts);
-        display.drawString(0, 10, "Address:    "+WiFi.localIP().toString());
-        display.drawString(0, 20, "Sat Count: " + String(gps.getSatelliteCount()));
-        display.drawString(0, 30, "Requests:  " + String(ntp.getReqCount()));
-        display.drawString(0, 40, "Responses: " + String(ntp.getRspCount()));
-        snprintf(ts, 63, "loop: %d / %d / %d", last_loop, min_loop, max_loop);
-        display.drawString(0, 50, String(ts));
-        // write the buffer to the display
-        display.display();
-#endif
+        display.process();
     }
 
     last_seconds = tv.tv_sec;
-    last_loop    = millis() - start_loop;
-    if (min_loop == 0 || last_loop < min_loop)
-    {
-        min_loop = last_loop;
-    }
-    if (max_loop == 0 || last_loop > max_loop)
-    {
-        max_loop = last_loop;
-    }
 }

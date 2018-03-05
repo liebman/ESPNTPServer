@@ -65,6 +65,7 @@ public:
     uint32_t getJitter()     { return _max_micros - _min_micros; }
     uint32_t getValidCount() { return _valid_count; }
     uint32_t getValidDelay() { return _valid_delay; }
+    time_t   getValidSince() { return _valid_since; }
     uint8_t  getSatelliteCount() { return _nmea.getNumSatellites(); }
     time_t   getSeconds()        { return _seconds; }
     void     getTime(struct timeval* tv);
@@ -85,6 +86,7 @@ private:
     volatile time_t   _seconds;
     volatile uint32_t _valid_delay;  // delay (seconds) from gps_valid until we thing we are valid
     volatile uint32_t _valid_count;  // number of times we have gone valid
+    volatile time_t   _valid_since;
     volatile uint32_t _min_micros;
     volatile uint32_t _max_micros;
     volatile uint32_t _last_micros;

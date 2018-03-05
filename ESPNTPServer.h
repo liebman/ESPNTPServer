@@ -20,7 +20,6 @@
  *      Author: liebman
  */
 
-#define USE_OLED_DISPLAY
 //#define USE_NO_WIFI
 
 #ifndef _ESPNTPServer_H_
@@ -31,8 +30,6 @@
 #include "WiFiManager.h"
 #endif
 #include <time.h>
-
-#include "SSD1306Wire.h"
 
 // pin definitions
 #define SYNC_PIN               14   // (GPIO14) pin tied to 1hz square wave from GPS
