@@ -105,8 +105,8 @@ void Display::process()
     {
         if (_gps.isGPSValid())
         {
-            align(TEXT_ALIGN_LEFT);
-            print(0, 40, "Valid in: %d", _gps.getValidDelay());
+            align(TEXT_ALIGN_RIGHT);
+            print(127, 40, "%d till VALID", _gps.getValidDelay());
         }
         else
         {
