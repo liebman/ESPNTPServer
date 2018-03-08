@@ -122,52 +122,54 @@ void GPS::process()
             getTime(&tv);
             logger.debug(TAG, "'%s'", _nmea.getSentence());
 
+            const char * id = _nmea.getMessageID();
+
+            //
+            // if it was a GGA and its valid then check and maybe update the time
+            //
+            if (_nmea.getYear() > 2000 && strcmp("RMC", id) == 0)
+            {
+                struct tm tm;
+                tm.tm_year  = _nmea.getYear() - 1900;
+                tm.tm_mon   = _nmea.getMonth() - 1;
+                tm.tm_mday  = _nmea.getDay();
+                tm.tm_hour  = _nmea.getHour();
+                tm.tm_min   = _nmea.getMinute();
+                tm.tm_sec   = _nmea.getSecond();
+                time_t new_seconds = mktime(&tm);
+
+                //
+                // we only update seconds if the message arrived in the last half of a second,
+                // if its in the first half then its most likely delayed from the previous second.
+                time_t old_seconds = _seconds;
+                if (old_seconds != new_seconds)
+                {
+                    if (!_nmea_late)
+                    {
+                        _seconds = new_seconds;
+                        invalidate("seconds adjusted!");
+                        logger.info(TAG, "adjusting seconds from %lu to %lu from:'%s'", old_seconds, new_seconds, _nmea.getSentence());
+                    }
+                    else
+                    {
+                        logger.debug(TAG, "ignoring late NMEA time: '%s'",_nmea.getSentence());
+                    }
+                }
+
+                _nmea_late = false;
+                _nmea_timer.attach_ms(NMEA_TIMER_MS, _timer_handler, &_nmea_timeout);
+            }
+
             if (_nmea.isValid() && _nmea.getNumSatellites() >= 4)
             {
                 //
-                // if it was a GGA and its valid then check and maybe update the time
+                // if gps was not valid, it is now
                 //
-                const char * id = _nmea.getMessageID();
-                if (_nmea.getYear() > 2000 && strcmp("RMC", id) == 0)
+                if (!_gps_valid)
                 {
-                    struct tm tm;
-                    tm.tm_year         = _nmea.getYear() - 1900;
-                    tm.tm_mon          = _nmea.getMonth() - 1;
-                    tm.tm_mday         = _nmea.getDay();
-                    tm.tm_hour         = _nmea.getHour();
-                    tm.tm_min          = _nmea.getMinute();
-                    tm.tm_sec          = _nmea.getSecond();
-                    time_t new_seconds = mktime(&tm);
-
-                    //
-                    // we only update seconds if the message arrived in the last half of a second,
-                    // if its in the first half then its most likely delayed from the previous second.
-                    time_t old_seconds = _seconds;
-                    if (old_seconds != new_seconds)
-                    {
-                        if (!_nmea_late)
-                        {
-                            _seconds = new_seconds;
-                            logger.info(TAG, "adjusting seconds from %lu to %lu from:'%s'", old_seconds, new_seconds, _nmea.getSentence());
-                        }
-                        else
-                        {
-                            logger.debug(TAG, "ignoring late NMEA time: '%s'",_nmea.getSentence());
-                        }
-                    }
-
-                    _nmea_late = false;
-                    _nmea_timer.attach_ms(NMEA_TIMER_MS, _timer_handler, &_nmea_timeout);
-
-                    //
-                    // if gps was not valid, it is now
-                    //
-                    if (!_gps_valid)
-                    {
-                        _valid_delay = VALID_DELAY;
-                        _gps_valid       = true;
-                        logger.info(TAG, "GPS valid!");
-                    }
+                    _valid_delay = VALID_DELAY;
+                    _gps_valid       = true;
+                    logger.info(TAG, "GPS valid!");
                 }
             }
             else /* nmea not valid or sat count < 4 */
