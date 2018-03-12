@@ -125,10 +125,11 @@ void NTP::begin()
     _precision = computePrecision();
     while (!_udp.listen(NTP_PORT))
     {
-        logger.error(TAG, "failed to listen on port %d!  Will retry in a bit...", NTP_PORT);
+        dlog.error(TAG, F("failed to listen on port %d!  Will retry in a bit..."), NTP_PORT);
         delay(1000);
-        logger.warning(TAG, "setup: retrying!");
+        dlog.warning(TAG, F("setup: retrying!"));
     }
+
     using namespace std::placeholders;  // for _1, _2, _3...
 
     _udp.onPacket(std::bind( &NTP::ntp, this, _1));
@@ -146,7 +147,7 @@ int8_t NTP::computePrecision()
     double        total = (double)(end - start) / 1000000.0;
     double        time  = total / PRECISION_COUNT;
     double        prec  = log2(time);
-    logger.info(TAG, "computePrecision: total:%f time:%f prec:%f (%d)", total, time, prec, (int8_t)prec);
+    dlog.info(TAG, F("computePrecision: total:%f time:%f prec:%f (%d)"), total, time, prec, (int8_t)prec);
     return (int8_t)prec;
 }
 
@@ -168,13 +169,13 @@ void NTP::ntp(AsyncUDPPacket& aup)
     getNTPTime(&recv_time);
     if (aup.length() != sizeof(NTPPacket))
     {
-        logger.warning(TAG, "recievePacket: ignoring packet with bad length: %d < %d", aup.length(), sizeof(NTPPacket));
+        dlog.warning(TAG, F("recievePacket: ignoring packet with bad length: %d < %d"), aup.length(), sizeof(NTPPacket));
         return;
     }
 
     if (!_gps.isValid())
     {
-        logger.warning(TAG, "recievePacket: GPS data not valid!");
+        dlog.warning(TAG, F("recievePacket: GPS data not valid!"));
         return;
     }
 

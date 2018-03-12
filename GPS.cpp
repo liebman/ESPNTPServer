@@ -110,7 +110,7 @@ void GPS::process()
 {
     if (_reason[0] != '\0')
     {
-        logger.warning(TAG, "REASON: %s", _reason);
+        dlog.warning(TAG, F("REASON: %s"), _reason);
         _reason[0] = '\0';
     }
 
@@ -120,7 +120,7 @@ void GPS::process()
         {
             struct timeval tv;
             getTime(&tv);
-            logger.debug(TAG, "'%s'", _nmea.getSentence());
+            dlog.debug(TAG, F("'%s'"), _nmea.getSentence());
 
             const char * id = _nmea.getMessageID();
 
@@ -148,11 +148,11 @@ void GPS::process()
                     {
                         _seconds = new_seconds;
                         invalidate("seconds adjusted!");
-                        logger.info(TAG, "adjusting seconds from %lu to %lu from:'%s'", old_seconds, new_seconds, _nmea.getSentence());
+                        dlog.info(TAG, F("adjusting seconds from %lu to %lu from:'%s'"), old_seconds, new_seconds, _nmea.getSentence());
                     }
                     else
                     {
-                        logger.debug(TAG, "ignoring late NMEA time: '%s'",_nmea.getSentence());
+                        dlog.debug(TAG, F("ignoring late NMEA time: '%s'"),_nmea.getSentence());
                     }
                 }
 
@@ -169,7 +169,7 @@ void GPS::process()
                 {
                     _valid_delay = VALID_DELAY;
                     _gps_valid       = true;
-                    logger.info(TAG, "GPS valid!");
+                    dlog.info(TAG, F("GPS valid!"));
                 }
             }
             else /* nmea not valid or sat count < 4 */

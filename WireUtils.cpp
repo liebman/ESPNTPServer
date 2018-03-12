@@ -43,7 +43,7 @@ WireUtilsC::WireUtilsC()
  */
 int WireUtilsC::clearBus()
 {
-	logger.warning(TAG, "WireUtils::ClearBus: attempting to clean i2c bus");
+	dlog.warning(TAG, F("WireUtils::ClearBus: attempting to clean i2c bus"));
 #if defined(TWCR) && defined(TWEN)
 	TWCR &= ~(_BV(TWEN)); //Disable the Atmel 2-Wire interface so we can control the SDA and SCL pins directly
 #endif
@@ -53,7 +53,7 @@ int WireUtilsC::clearBus()
 	boolean SCL_LOW = (digitalRead(SCL) == LOW); // Check is SCL is Low.
 	if (SCL_LOW)
 	{ //If it is held low Arduno cannot become the I2C master.
-	    logger.error(TAG, "WireUtils::ClearBus: Failed! SCL held low!");
+	    dlog.error(TAG, F("WireUtils::ClearBus: Failed! SCL held low!"));
 		return 1; //I2C bus error. Could not clear SCL clock line held low
 	}
 
@@ -82,14 +82,14 @@ int WireUtilsC::clearBus()
 		}
 		if (SCL_LOW)
 		{ // still low after 2 sec error
-		    logger.error(TAG, "WireUtils::ClearBus: Failed! SCL clock line held low by slave clock stretch for >2sec");
+		    dlog.error(TAG, F("WireUtils::ClearBus: Failed! SCL clock line held low by slave clock stretch for >2sec"));
 			return 2; // I2C bus error. Could not clear. SCL clock line held low by slave clock stretch for >2sec
 		}
 		SDA_LOW = (digitalRead(SDA) == LOW); //   and check SDA input again and loop
 	}
 	if (SDA_LOW)
 	{ // still low
-	    logger.error(TAG, "WireUtils::ClearBus: Failed! SDA data line still held low");
+	    dlog.error(TAG, F("WireUtils::ClearBus: Failed! SDA data line still held low"));
 		return 3; // I2C bus error. Could not clear. SDA data line held low
 	}
 
@@ -104,7 +104,7 @@ int WireUtilsC::clearBus()
 	delayMicroseconds(10); // x. wait >5uS
 	pinMode(SDA, INPUT); // and reset pins as tri-state inputs which is the default state on reset
 	pinMode(SCL, INPUT);
-	logger.info(TAG, "WireUtils::ClearBus: Success!");
+	dlog.info(TAG, F("WireUtils::ClearBus: Success!"));
 	return 0; // all ok
 }
 

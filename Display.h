@@ -28,6 +28,7 @@ public:
     void display();
     void align(OLEDDISPLAY_TEXT_ALIGNMENT alignment);
     void font(const char* fontData);
+
     void print(int16_t x, int16_t y, const char* fmt, ...);
 private:
     SSD1306Wire    _dsp;

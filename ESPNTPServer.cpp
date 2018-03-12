@@ -22,6 +22,7 @@
 
 #include "ESPNTPServer.h"
 #include "Log.h"
+#include "DLogPrintWriter.h"
 
 #include "GPS.h"
 #include "NTP.h"
@@ -30,18 +31,20 @@
 GPS gps(Serial, SYNC_PIN);
 NTP ntp(gps);
 Display display(gps, ntp, SDA_PIN, SCL_PIN);
+DLog& dlog = DLog::getLog();
 
 const char* SETUP_TAG = "setup";
 const char* LOOP_TAG  = "loop";
 
-void logTimeFirst(Print* print)
+void logTimeFirst(DLogBuffer& buffer, DLogLevel level)
 {
-    static struct timeval tv;
+    (void)level; // not used
+    struct timeval tv;
+    struct tm tm;
     gps.getTime(&tv);
-    static struct tm tm;
     gmtime_r(&tv.tv_sec, &tm);
 
-    print->printf("%04d/%02d/%02d %02d:%02d:%02d.%06ld ",
+    buffer.printf(F("%04d/%02d/%02d %02d:%02d:%02d.%06ld "),
             tm.tm_year+1900,
             tm.tm_mon+1,
             tm.tm_mday,
@@ -54,25 +57,29 @@ void logTimeFirst(Print* print)
 void setup()
 {
     delay(5000); // delay for IDE to re-open serial
-    Serial1.begin(115200);
-    logger.setSize(256);
-    logger.setPrint(&Serial1);
-    logger.setPreFunc(&logTimeFirst);
-    logger.info(SETUP_TAG, "Startup!");
 
-    logger.info(SETUP_TAG, "initializing display");
+    //
+    // Setup DLog with Serial1, set the pre function to add the date/time
+    //
+    Serial1.begin(115200);
+    dlog.begin(new DLogPrintWriter(Serial1));
+    dlog.setPreFunc(&logTimeFirst);
+
+    dlog.info(SETUP_TAG, F("Startup!"));
+
+    dlog.info(SETUP_TAG, F("initializing display"));
     display.begin();
 
-    logger.info(SETUP_TAG, "initializing serial for GPS");
+    dlog.info(SETUP_TAG, F("initializing serial for GPS"));
     Serial.begin(9600);
     Serial.swap();
 
-    logger.info(SETUP_TAG, "initializing GPS");
+    dlog.info(SETUP_TAG, F("initializing GPS"));
     gps.begin();
     display.process();
 
 #if !defined(USE_NO_WIFI)
-    logger.info(SETUP_TAG, "initializing wifi");
+    dlog.info(SETUP_TAG, F("initializing wifi"));
 #if 0
     WiFiManager wifi;
     wifi.setDebugStream(Serial1);
@@ -88,7 +95,7 @@ void setup()
 
     display.process();
 
-    logger.info(SETUP_TAG, "initializing NTP");
+    dlog.info(SETUP_TAG, F("initializing NTP"));
     ntp.begin();
 }
 
@@ -122,14 +129,14 @@ void loop()
                 status = "<UNKNOWN>";
                 break;
         }
-        logger.info(LOOP_TAG, "wifi status change %d -> %d '%s'", last_wifi_status, wifi_status, status);
+        dlog.info(LOOP_TAG, F("wifi status change %d -> %d '%s'"), last_wifi_status, wifi_status, status);
         last_wifi_status = wifi_status;
     }
 
     IPAddress ip = WiFi.localIP();
     if (ip != last_ip)
     {
-        logger.warning(LOOP_TAG, "ip address change %s -> %s", last_ip.toString().c_str(), ip.toString().c_str());
+        dlog.warning(LOOP_TAG, F("ip address change %s -> %s"), last_ip.toString().c_str(), ip.toString().c_str());
         last_ip = ip;
     }
 
@@ -138,22 +145,12 @@ void loop()
     static time_t last_seconds;
     struct timeval tv;
     gps.getTime(&tv);
+
     if (tv.tv_sec != last_seconds)
     {
-        struct tm tm;
-        gmtime_r(&tv.tv_sec, &tm);
-        char ts[64];
-        snprintf(ts, 63, "%04d/%02d/%02d %02d:%02d:%02d.%06ld",
-                tm.tm_year+1900,
-                tm.tm_mon+1,
-                tm.tm_mday,
-                tm.tm_hour,
-                tm.tm_min,
-                tm.tm_sec,
-                tv.tv_usec);
         if (tv.tv_sec != last_seconds && ((tv.tv_sec % 300) == 0 || gps.getValidDelay()))
         {
-            logger.info("loop", "jitter:%lu valid_count:%lu valid:%s gpsvalid:%s numsat:%d heap:%ld valid_delay:%d",
+            dlog.info("loop", F("jitter:%lu valid_count:%lu valid:%s gpsvalid:%s numsat:%d heap:%ld valid_delay:%d"),
                     gps.getJitter(),
                     gps.getValidCount(),
                     gps.isValid() ? "true" : "false",
@@ -165,7 +162,7 @@ void loop()
 
         if (tv.tv_sec < last_seconds)
         {
-            logger.warning(LOOP_TAG, "%s: OOPS: time went backwards: last:%lu now:%lu\n", ts, last_seconds, tv.tv_sec);
+            dlog.warning(LOOP_TAG, F("OOPS: time went backwards: last:%lu now:%lu delta:%ld"), last_seconds, tv.tv_sec, tv.tv_sec-last_seconds);
         }
 
         display.process();

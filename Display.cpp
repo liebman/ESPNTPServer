@@ -27,10 +27,10 @@ Display::~Display()
 
 void Display::begin()
 {
-    logger.info(TAG, "initializing display");
+    dlog.info(TAG, F("initializing display"));
     if (!_dsp.init())
     {
-        logger.error(TAG, "display.init() failed!");
+        dlog.error(TAG, F("display.init() failed!"));
     }
     _dsp.flipScreenVertically();
     font(ArialMT_Plain_10);
