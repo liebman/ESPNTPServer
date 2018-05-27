@@ -1,0 +1,21 @@
+[submodule "hardware/esp8266com/esp8266"]
+	path = hardware/esp8266com/esp8266
+	url = https://github.com/esp8266/Arduino.git
+[submodule "libraries/DLog"]
+	path = libraries/DLog
+	url = git@github.com:liebman/DLog.git
+[submodule "libraries/DLogNet"]
+	path = libraries/DLogNet
+	url = git@github.com:liebman/DLogNet.git
+[submodule "libraries/MicroNMEA"]
+	path = libraries/MicroNMEA
+	url = https://github.com/stevemarple/MicroNMEA.git
+[submodule "libraries/WiFiManager"]
+	path = libraries/WiFiManager
+	url = https://github.com/tzapu/WiFiManager.git
+[submodule "libraries/esp8266-oled-ssd1306"]
+	path = libraries/esp8266-oled-ssd1306
+	url = git@github.com:liebman/esp8266-oled-ssd1306.git
+[submodule "libraries/ESPAsyncUDP"]
+	path = libraries/ESPAsyncUDP
+	url = https://github.com/me-no-dev/ESPAsyncUDP.git
