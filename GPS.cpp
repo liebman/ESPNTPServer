@@ -207,12 +207,17 @@ void ICACHE_RAM_ATTR GPS::timeout()
  */
 void ICACHE_RAM_ATTR GPS::invalidate(const char* fmt, ...)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(_reason, REASON_SIZE-1, fmt, ap);
-    _reason[REASON_SIZE-1] = '\0';
-    va_end(ap);
-
+    //
+    // only update the reason if there is not one already
+    //
+    if (_reason[0] == '\0')
+    {
+        va_list ap;
+        va_start(ap, fmt);
+        vsnprintf(_reason, REASON_SIZE-1, fmt, ap);
+        _reason[REASON_SIZE-1] = '\0';
+        va_end(ap);
+    }
     _valid       = false;
     _gps_valid   = false;
     _last_micros = 0;
@@ -228,6 +233,7 @@ void ICACHE_RAM_ATTR GPS::pps()
     uint32_t cur_micros = micros();
     (void)cur_micros;
 
+#if 0
     //
     // don't trust PPS if GPS is not valid.
     //
@@ -236,6 +242,7 @@ void ICACHE_RAM_ATTR GPS::pps()
         PPS_TIMING_PIN_OFF();
         return;
     }
+#endif
 
     //
     // increment seconds

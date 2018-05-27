@@ -61,12 +61,12 @@ void setup()
     //
     // Setup DLog with Serial1, set the pre function to add the date/time
     //
-    Serial1.begin(115200);
+    Serial1.begin(76800);
     dlog.begin(new DLogPrintWriter(Serial1));
     dlog.setPreFunc(&logTimeFirst);
+    //dlog.setLevel("GPS", DLogLevel::DLOG_LEVEL_DEBUG);
 
     dlog.info(SETUP_TAG, F("Startup!"));
-
     dlog.info(SETUP_TAG, F("initializing display"));
     display.begin();
 

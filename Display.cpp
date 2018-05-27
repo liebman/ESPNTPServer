@@ -32,7 +32,7 @@ void Display::begin()
     {
         dlog.error(TAG, F("display.init() failed!"));
     }
-    _dsp.flipScreenVertically();
+    //_dsp.flipScreenVertically();
     font(ArialMT_Plain_10);
 }
 

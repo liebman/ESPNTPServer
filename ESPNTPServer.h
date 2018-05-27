@@ -32,7 +32,7 @@
 #include <time.h>
 
 // pin definitions
-#define SYNC_PIN               14   // (GPIO14) pin tied to 1hz square wave from GPS
+#define SYNC_PIN               12   // (GPIO12) pin tied to 1hz square wave from GPS
 #define SDA_PIN                4
 #define SCL_PIN                5
 
