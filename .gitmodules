@@ -9,7 +9,8 @@
 	url = git@github.com:liebman/DLogNet.git
 [submodule "libraries/MicroNMEA"]
 	path = libraries/MicroNMEA
-	url = https://github.com/stevemarple/MicroNMEA.git
+	url = git@github.com:liebman/MicroNMEA.git
+	branch = handle-empty-date-or-time
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
 	url = https://github.com/tzapu/WiFiManager.git
