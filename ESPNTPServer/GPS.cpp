@@ -1,7 +1,7 @@
 /*
  * GPS.cpp
  *
- * Copyright 2017 Christopher B. Liebman
+ * Copyright 2018 Christopher B. Liebman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,7 +116,9 @@ void GPS::process()
 
     while (_stream.available() > 0)
     {
-        if (_nmea.process(_stream.read()))
+    	int c = _stream.read();
+    	dlog.trace(TAG, F("c: %c"), c);
+        if (_nmea.process(c))
         {
             struct timeval tv;
             getTime(&tv);

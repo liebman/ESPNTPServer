@@ -19,3 +19,6 @@
 [submodule "libraries/ESPAsyncUDP"]
 	path = libraries/ESPAsyncUDP
 	url = https://github.com/me-no-dev/ESPAsyncUDP.git
+[submodule "libraries/Syslog"]
+	path = libraries/Syslog
+	url = https://github.com/arcao/Syslog.git

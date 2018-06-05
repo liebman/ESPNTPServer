@@ -122,6 +122,19 @@ void Display::process()
     display();
 }
 
+void Display::message(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+	clear();
+    align(TEXT_ALIGN_CENTER);
+	vprint(64, 32, fmt, ap);
+	display();
+
+	va_end(ap);
+}
+
 void Display::clear()
 {
     _dsp.clear();
@@ -146,9 +159,13 @@ void Display::print(int16_t x, int16_t y, const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+    vprint(x, y, fmt, ap);
+    va_end(ap);
+}
+
+void Display::vprint(int16_t x, int16_t y, const char* fmt, va_list ap)
+{
     vsnprintf(_buffer, DISPLAY_BUFFER_LEN, fmt, ap);
     _buffer[DISPLAY_BUFFER_LEN-1] = '\0';
-    va_end(ap);
-
     _dsp.drawString(x, y, _buffer);
 }

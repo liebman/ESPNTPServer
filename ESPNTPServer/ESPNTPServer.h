@@ -27,14 +27,18 @@
 #include "Arduino.h"
 #include "Ticker.h"
 #if !defined(USE_NO_WIFI)
-#include "WiFiManager.h"
+#include "WiFiSetup.h"
 #endif
+#include "ESP8266httpUpdate.h"
 #include <time.h>
 
 // pin definitions
-#define SYNC_PIN               12   // (GPIO12) pin tied to 1hz square wave from GPS
+#define SYNC_PIN               12   // GPIO12 pin tied to 1hz square wave from GPS
+#define CONFIG_PIN             14   // GPIO14 tied to reset/config button
 #define SDA_PIN                4
 #define SCL_PIN                5
+
+#define CONFIG_DELAY           1000  // how long to hold the button for config mode.
 
 
 #endif /* _ESPNTPServer_H_ */

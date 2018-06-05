@@ -26,7 +26,7 @@
 #include "Ticker.h"
 
 #define REASON_SIZE       128
-#define NMEA_BUFFER_SIZE  128
+#define NMEA_BUFFER_SIZE  250
 #define PPS_TIMING_PIN    12   // (GPIO12) if defined PPS interrupt will make high during processing
 #define VALID_DELAY       120  // delay (seconds) from gps valid to valid
 #define VALID_TIMER_MS    1001 // if this timer expires we invalidate!

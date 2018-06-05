@@ -54,9 +54,62 @@ void logTimeFirst(DLogBuffer& buffer, DLogLevel level)
             tv.tv_usec);
 }
 
+void processOTA(const char* ota_url, const char* ota_fp)
+{
+    static PROGMEM const char TAG[] = "processOTA";
+    dlog.info(FPSTR(TAG), F("OTA update"));
+
+	dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), ota_url);
+	display.message("Starting OTA");
+
+	ESPhttpUpdate.rebootOnUpdate(false);
+
+	t_httpUpdate_return ret;
+
+	if (strncmp(ota_url, "https:", 6) == 0)
+	{
+		ret = ESPhttpUpdate.update(ota_url, "0.4", ota_fp);
+	}
+	else
+	{
+		ret = ESPhttpUpdate.update(ota_url, "0.4");
+	}
+
+	String reason = ESPhttpUpdate.getLastErrorString();
+
+	switch(ret)
+	{
+		case HTTP_UPDATE_OK:
+			dlog.info(FPSTR(TAG), F("OTA update OK! restarting..."));
+			dlog.end();
+			display.message("Success!");
+			delay(10000);
+			ESP.restart();
+			break;
+
+		case HTTP_UPDATE_FAILED:
+			dlog.info(FPSTR(TAG), F("OTA update failed! reason:'%s'"), reason.c_str());
+			display.message("FAILED!");
+			delay(10000);
+			break;
+
+		case HTTP_UPDATE_NO_UPDATES:
+			dlog.info(FPSTR(TAG), F("OTA no updates! reason:'%s'"), reason.c_str());
+			display.message("NO Update!");
+			delay(10000);
+			break;
+
+		default:
+			dlog.info(FPSTR(TAG), F("OTA update WTF? unexpected return code: %d reason: '%s'"), ret, reason.c_str());
+			display.message("Unknown!");
+			delay(10000);
+			break;
+	}
+}
+
 void setup()
 {
-    delay(5000); // delay for IDE to re-open serial
+    //delay(5000); // delay for IDE to re-open serial
 
     //
     // Setup DLog with Serial1, set the pre function to add the date/time
@@ -70,27 +123,50 @@ void setup()
     dlog.info(SETUP_TAG, F("initializing display"));
     display.begin();
 
+
     dlog.info(SETUP_TAG, F("initializing serial for GPS"));
     Serial.begin(9600);
     Serial.swap();
 
     dlog.info(SETUP_TAG, F("initializing GPS"));
+    display.message("Starting GPS");
     gps.begin();
     display.process();
 
+    bool force_config = false;
+    // if the reset/config button is pressed then force config
+    if (digitalRead(CONFIG_PIN) == 0)
+    {
+        time_t start = millis();
+
+        while (digitalRead(CONFIG_PIN) == 0)
+        {
+            time_t delta = millis() - start;
+			if (!force_config && delta > CONFIG_DELAY)
+			{
+                dlog.info(SETUP_TAG, F("reset button held, forcing config!"));
+                force_config = true;
+				display.message("Force Config");
+			}
+        }
+    }
+
 #if !defined(USE_NO_WIFI)
     dlog.info(SETUP_TAG, F("initializing wifi"));
-#if 0
-    WiFiManager wifi;
-    wifi.setDebugStream(Serial1);
-    wifi.setDebugOutput(false);
-#else
-    WiFiManager wifi(Serial1);
-    wifi.setDebugOutput(true);
-#endif
-    wifi.setDebugOutput(true);
-    String ssid = "ESPNTPServer" + String(ESP.getChipId());
-    wifi.autoConnect(ssid.c_str(), NULL);
+    display.message("Starting WiFi");
+    WiFiSetup wifi(display, Serial1, false);
+    wifi.connect(force_config);
+    const char* url = wifi.getOTAURL();
+    const char* fp  = wifi.getOTAFP();
+    if (fp == nullptr)
+    {
+    	fp = "";
+    }
+
+    if (url != nullptr)
+    {
+    	processOTA(url, fp);
+    }
 #endif
 
     display.process();
@@ -139,6 +215,14 @@ void loop()
         dlog.warning(LOOP_TAG, F("ip address change %s -> %s"), last_ip.toString().c_str(), ip.toString().c_str());
         last_ip = ip;
     }
+
+#if 0
+    uint32_t m = millis();
+    if (m % 1000 == 0)
+    {
+    	dlog.info("loop", "uptime: %lu millis: %lu", m);
+    }
+#endif
 
     gps.process();
 
