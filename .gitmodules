@@ -19,6 +19,7 @@
 [submodule "libraries/esp8266-oled-ssd1306"]
 	path = libraries/esp8266-oled-ssd1306
 	url = git@github.com:liebman/esp8266-oled-ssd1306.git
+        branch = cleanup-warnings
 [submodule "libraries/ESPAsyncUDP"]
 	path = libraries/ESPAsyncUDP
 	url = https://github.com/me-no-dev/ESPAsyncUDP.git
