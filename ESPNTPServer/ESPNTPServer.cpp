@@ -23,15 +23,20 @@
 #include "ESPNTPServer.h"
 #include "Log.h"
 #include "DLogPrintWriter.h"
+#include "DLogSyslogWriter.h"
 
 #include "GPS.h"
 #include "NTP.h"
 #include "Display.h"
+#include "Config.h"
 
+DLog& dlog = DLog::getLog();
 GPS gps(Serial, SYNC_PIN);
 NTP ntp(gps);
 Display display(gps, ntp, SDA_PIN, SCL_PIN);
-DLog& dlog = DLog::getLog();
+Config config;
+
+char devicename[32];
 
 const char* SETUP_TAG = "setup";
 const char* LOOP_TAG  = "loop";
@@ -118,8 +123,14 @@ void setup()
     dlog.begin(new DLogPrintWriter(Serial1));
     dlog.setPreFunc(&logTimeFirst);
     //dlog.setLevel("GPS", DLogLevel::DLOG_LEVEL_DEBUG);
+    dlog.setLevel("Config", DLogLevel::DLOG_LEVEL_DEBUG);
 
     dlog.info(SETUP_TAG, F("Startup!"));
+
+    String id = "ESPNTP:" + String(ESP.getChipId(), 16);
+    strncpy(devicename, id.c_str(), 32);
+    dlog.info(SETUP_TAG, "Device name: %s", devicename);
+
     dlog.info(SETUP_TAG, F("initializing display"));
     display.begin();
 
@@ -134,6 +145,15 @@ void setup()
     display.process();
 
     bool force_config = false;
+
+    config.begin();
+
+    if (!config.load())
+    {
+        dlog.warning(SETUP_TAG, "no config found, forcing config portal!");
+        force_config = true;
+    }
+
     // if the reset/config button is pressed then force config
     if (digitalRead(CONFIG_PIN) == 0)
     {
@@ -154,8 +174,16 @@ void setup()
 #if !defined(USE_NO_WIFI)
     dlog.info(SETUP_TAG, F("initializing wifi"));
     display.message("Starting WiFi");
-    WiFiSetup wifi(display, Serial1, false);
+    WiFiSetup wifi(config, display, Serial1, false, devicename);
     wifi.connect(force_config);
+
+    const char* syslog_host = config.getSyslogHost();
+    uint16_t    syslog_port = config.getSyslogPort();
+    if (syslog_host != nullptr && strlen(syslog_host) > 0 && syslog_port != 0)
+    {
+        dlog.info(SETUP_TAG, "enabling syslog: '%s:%u'", syslog_host, syslog_port);
+        dlog.begin(new DLogSyslogWriter("192.168.0.31", 514, devicename));
+    }
     const char* url = wifi.getOTAURL();
     const char* fp  = wifi.getOTAFP();
     if (fp == nullptr)
@@ -167,6 +195,9 @@ void setup()
     {
     	processOTA(url, fp);
     }
+
+    WiFiMode_t mode = WiFi.getMode();
+    dlog.error(SETUP_TAG, "WiFi mode: %d", mode);
 #endif
 
     display.process();

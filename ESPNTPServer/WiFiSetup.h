@@ -25,20 +25,28 @@
 #include "Arduino.h"
 #include "WiFiManager.h"
 #include "Display.h"
+#include "Config.h"
 
 class WiFiSetup {
 public:
-	WiFiSetup(Display& display, Stream& serial, boolean debug);
+	WiFiSetup(Config& config, Display& display, Stream& serial, boolean debug, const char* devicename);
 	virtual ~WiFiSetup();
 	void connect(bool force_config = false);
 	const char* getOTAURL();
 	const char* getOTAFP();
+	const char* getSyslogHost();
+	uint16_t    getSyslogPort();
 private:
+	Config&              _config;
     Display&             _display;
 	WiFiManager          _wm;
 	WiFiManagerParameter _ota_url;
 	WiFiManagerParameter _ota_fp;
+    WiFiManagerParameter _syslog_host;
+    WiFiManagerParameter _syslog_port;
+	const char*          _devicename;
 	void startingPortal(WiFiManager* wmp);
+	void saveConfig();
 	const char*getParam(WiFiManagerParameter& param);
 
 };

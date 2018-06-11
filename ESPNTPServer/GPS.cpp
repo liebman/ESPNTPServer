@@ -127,9 +127,9 @@ void GPS::process()
             const char * id = _nmea.getMessageID();
 
             //
-            // if it was a GGA and its valid then check and maybe update the time
+            // if it was a RMC and its valid then check and maybe update the time
             //
-            if (_nmea.getYear() > 2000 && strcmp("RMC", id) == 0)
+            if (_nmea.getYear() > 2017 && strcmp("RMC", id) == 0)
             {
                 struct tm tm;
                 tm.tm_year  = _nmea.getYear() - 1900;
@@ -176,7 +176,7 @@ void GPS::process()
             }
             else /* nmea not valid or sat count < 4 */
             {
-                if (_gps_valid)
+                if (_gps_valid || _valid_delay)
                 {
                     invalidate("NMEA:%s SATS:%d from: '%s'",
                             _nmea.isValid() ? "valid" : "invalid",
@@ -222,6 +222,7 @@ void ICACHE_RAM_ATTR GPS::invalidate(const char* fmt, ...)
     }
     _valid       = false;
     _gps_valid   = false;
+    _valid_delay = 0;
     _last_micros = 0;
 }
 

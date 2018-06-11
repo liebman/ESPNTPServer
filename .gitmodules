@@ -26,3 +26,6 @@
 [submodule "libraries/Syslog"]
 	path = libraries/Syslog
 	url = https://github.com/arcao/Syslog.git
+[submodule "libraries/ArduinoJson"]
+	path = libraries/ArduinoJson
+	url = https://github.com/bblanchon/ArduinoJson.git

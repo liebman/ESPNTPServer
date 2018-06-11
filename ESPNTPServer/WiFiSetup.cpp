@@ -25,43 +25,56 @@
 #include "Log.h"
 static const char* TAG = "WiFiSetup";
 
-WiFiSetup::WiFiSetup(Display& display, Stream& serial, boolean debug)
-: _display(display),
+WiFiSetup::WiFiSetup(Config& config, Display& display, Stream& serial, boolean debug, const char* devicename)
+: _config(config),
+  _display(display),
   _wm(serial),
   _ota_url("ota_url", "OTA URL",         "", 128),
-  _ota_fp("ota_fp",   "OTA Fingerprint", "", 64)
+  _ota_fp("ota_fp",   "OTA Fingerprint", "", 64),
+  _syslog_host("syslog_host", "Syslog Host", "", 64),
+  _syslog_port("syslog_port", "Syslog Port", "514", 8),
+  _devicename(devicename)
 {
-	_wm.setDebugOutput(debug);
+    _wm.setDebugOutput(debug);
 
-	using namespace std::placeholders;
-	_wm.setAPCallback(std::bind(&WiFiSetup::startingPortal, this, _1));
+    using namespace std::placeholders;
+    _wm.setAPCallback(std::bind(&WiFiSetup::startingPortal, this, _1));
+    _wm.setSaveConfigCallback(std::bind(&WiFiSetup::saveConfig, this));
 }
 
-WiFiSetup::~WiFiSetup() {
+WiFiSetup::~WiFiSetup()
+{
 }
 
 void WiFiSetup::connect(bool force_config)
 {
-    String ssid = "ESPNTPServer" + String(ESP.getChipId());
-
-	if (force_config)
-	{
-	    dlog.info(TAG, F("connect: starting forced config portal!"));
-        _wm.startConfigPortal(ssid.c_str(), NULL);
-	}
-	else
-	{
-	    dlog.info(TAG, F("connect: auto-connecting"));
-        _wm.autoConnect(ssid.c_str(), NULL);
-	}
+    WiFi.mode(WiFiMode::WIFI_STA);
+    if (force_config)
+    {
+        dlog.info(TAG, F("connect: starting forced config portal!"));
+        _wm.startConfigPortal(_devicename, NULL);
+    }
+    else
+    {
+        dlog.info(TAG, F("connect: auto-connecting"));
+        _wm.autoConnect(_devicename, NULL);
+    }
 }
 
 void WiFiSetup::startingPortal(WiFiManager* wmp)
 {
-	(void)wmp;
-	dlog.info(TAG, F("startingPortal: adding params"));
-	_wm.addParameter(&_ota_url);
-	_wm.addParameter(&_ota_fp);
+    (void) wmp;
+    dlog.info(TAG, F("startingPortal: updating param values"));
+    _syslog_host.setValue(_config.getSyslogHost(), 64);
+    char value[10];
+    snprintf(value, sizeof(value), "%u", _config.getSyslogPort());
+    _syslog_port.setValue(value, 8);
+    dlog.info(TAG, F("startingPortal: adding params"));
+    _wm.addParameter(&_ota_url);
+    _wm.addParameter(&_ota_fp);
+    _wm.addParameter(&_syslog_host);
+    _wm.addParameter(&_syslog_port);
+
     dlog.debug(TAG, F("startingPortal: params added!"));
 
     //
@@ -71,24 +84,45 @@ void WiFiSetup::startingPortal(WiFiManager* wmp)
     _display.message("SSID: %s", _wm.getConfigPortalSSID().c_str());
 }
 
+void WiFiSetup::saveConfig()
+{
+    dlog.info(TAG, "saveConfig: updating values");
+    _config.setSyslogHost(_syslog_host.getValue());
+    _config.setSyslogPort(atoi(_syslog_port.getValue()));
+    dlog.debug(TAG, "saveConfig: saving!");
+    _config.save();
+}
+
 const char* WiFiSetup::getParam(WiFiManagerParameter& param)
 {
-	const char* value = param.getValue();
+    const char* value = param.getValue();
 
-	if (strlen(value) > 0)
-	{
-		return value;
-	}
+    if (strlen(value) > 0)
+    {
+        return value;
+    }
 
-	return NULL;
+    return NULL;
 }
 
 const char* WiFiSetup::getOTAURL()
 {
-	return getParam(_ota_url);
+    return getParam(_ota_url);
 }
 
 const char* WiFiSetup::getOTAFP()
 {
-	return getParam(_ota_fp);
+    return getParam(_ota_fp);
+}
+
+const char* WiFiSetup::getSyslogHost()
+{
+    return getParam(_syslog_host);
+}
+
+uint16_t WiFiSetup::getSyslogPort()
+{
+    const char* value = getParam(_syslog_port);
+    int port = atoi(value);
+    return port;
 }
