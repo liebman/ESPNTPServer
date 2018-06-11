@@ -7,7 +7,7 @@ env:
   global:
      - APPLICATION_FOLDER="${HOME}/arduino-ide"
      - SKETCHBOOK_FOLDER="${TRAVIS_BUILD_DIR}"
-     - ESP8266_DEVICE="esp8266com:esp8266:generic:CpuFrequency=160,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=2,LwIPVariant=v2mss536,Debug=Serial1,DebugLevel=None"
+     - ESP8266_DEVICE="esp8266com:esp8266:generic:CpuFrequency=160,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=2,LwIPVariant=v2mss536,Debug=Serial1,DebugLevel=None____"
      - ESPNTPSERVER_DIR="${TRAVIS_BUILD_DIR}/ESPNTPServer"
 
 before_install:
