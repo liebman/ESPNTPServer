@@ -1,7 +1,6 @@
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
-	url = https://github.com/liebman/Arduino.git
-        branch = sloeber-platform-hack
+	url = https://github.com/esp8266/Arduino.git
 [submodule "libraries/DLog"]
 	path = libraries/DLog
 	url = https://github.com/liebman/DLog.git
