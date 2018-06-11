@@ -1,24 +1,24 @@
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
-	url = git@github.com:liebman/Arduino.git
+	url = https://github.com/liebman/Arduino.git
         branch = sloeber-platform-hack
 [submodule "libraries/DLog"]
 	path = libraries/DLog
-	url = git@github.com:liebman/DLog.git
+	url = https://github.com/liebman/DLog.git
 [submodule "libraries/DLogNet"]
 	path = libraries/DLogNet
-	url = git@github.com:liebman/DLogNet.git
+	url = https://github.com/liebman/DLogNet.git
 [submodule "libraries/MicroNMEA"]
 	path = libraries/MicroNMEA
-	url = git@github.com:liebman/MicroNMEA.git
+	url = https://github.com/liebman/MicroNMEA.git
 	branch = handle-empty-date-or-time
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
-	url = git@github.com:liebman/WiFiManager.git
+	url = https://github.com/liebman/WiFiManager.git
 	branch = stdfunc
 [submodule "libraries/esp8266-oled-ssd1306"]
 	path = libraries/esp8266-oled-ssd1306
-	url = git@github.com:liebman/esp8266-oled-ssd1306.git
+	url = https://github.com/liebman/esp8266-oled-ssd1306.git
         branch = cleanup-warnings
 [submodule "libraries/ESPAsyncUDP"]
 	path = libraries/ESPAsyncUDP
