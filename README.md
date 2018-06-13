@@ -18,5 +18,5 @@ This is designed around [this GPS module](https://www.amazon.com/gp/product/B075
 I also used [this display module](https://www.amazon.com/gp/product/B00O2KDQBE/).  You can use others but be careful with the power polarity, I have modules where VCC and ground pins are in a different order.
 
 ![Schematic](images/ESPNTPServer.png)
-![assembly](images/open.jpg)
-![running](images/closed.jpg)
+![assembly](images/open.png)
+![running](images/closed.png)
