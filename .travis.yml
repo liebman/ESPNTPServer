@@ -1,0 +1,46 @@
+language: python
+  - "2.7"
+
+sudo: required
+
+env:
+  global:
+     - APPLICATION_FOLDER="${HOME}/arduino-ide"
+     - SKETCHBOOK_FOLDER="${TRAVIS_BUILD_DIR}"
+     - ESP8266_DEVICE="esp8266com:esp8266:generic:CpuFrequency=160,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=2,LwIPVariant=v2mss536,Debug=Serial1,DebugLevel=None____"
+     - ESPNTPSERVER_DIR="${TRAVIS_BUILD_DIR}/ESPNTPServer"
+
+before_install:
+  - echo HOME is "'${HOME}'"
+  - id
+  - cd "${TRAVIS_BUILD_DIR}"
+  - ./setup.sh
+  # setup arduino-ci-script
+  - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
+  - cd "${HOME}/scripts"
+  # Get new tags from the remote
+  - git fetch --tags
+  # Checkout the latest tag
+  - git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
+  - source "${HOME}/scripts/arduino-ci-script.sh"
+
+  # Uncomment the following lines to get verbose output for debugging
+  # 0 (minimum/default) - 2 (maximum) verbosity
+  #- set_script_verbosity 1
+  # Turn on verbose output during compilation
+  #- set_verbose_output_during_compilation "true"
+
+  # Don't for library issues that don't affect compilation
+  - set_library_testing "false"
+
+  - set_application_folder "$APPLICATION_FOLDER"
+  - set_sketchbook_folder "$SKETCHBOOK_FOLDER"
+
+  - install_ide "1.8.5"
+
+  # make it look like a sketch for arduino
+  - touch "${ESPNTPSERVER_DIR}/ESPNTPServer.ino"
+
+script:
+  # build with arduino
+  - build_sketch "${ESPNTPSERVER_DIR}" "${ESP8266_DEVICE}" "false" "1.8.5"
