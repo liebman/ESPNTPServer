@@ -127,8 +127,7 @@ void setup()
 
     dlog.info(SETUP_TAG, F("Startup!"));
 
-    String id = "ESPNTP:" + String(ESP.getChipId(), 16);
-    strncpy(devicename, id.c_str(), 32);
+    snprintf(devicename, sizeof(devicename), "ESPNTP:%08x", ESP.getChipId());
     dlog.info(SETUP_TAG, "Device name: %s", devicename);
 
     dlog.info(SETUP_TAG, F("initializing display"));
@@ -182,7 +181,7 @@ void setup()
     if (syslog_host != nullptr && strlen(syslog_host) > 0 && syslog_port != 0)
     {
         dlog.info(SETUP_TAG, "enabling syslog: '%s:%u'", syslog_host, syslog_port);
-        dlog.begin(new DLogSyslogWriter("192.168.0.31", 514, devicename));
+        dlog.begin(new DLogSyslogWriter(syslog_host, syslog_port, devicename));
     }
     const char* url = wifi.getOTAURL();
     const char* fp  = wifi.getOTAFP();
