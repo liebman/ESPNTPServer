@@ -13,8 +13,8 @@
 	branch = handle-empty-date-or-time
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
-	url = https://github.com/liebman/WiFiManager.git
-	branch = stdfunc
+	url = https://github.com/tzapu/WiFiManager.git
+	branch = development
 [submodule "libraries/esp8266-oled-ssd1306"]
 	path = libraries/esp8266-oled-ssd1306
 	url = https://github.com/liebman/esp8266-oled-ssd1306.git

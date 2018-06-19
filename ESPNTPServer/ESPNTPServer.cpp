@@ -21,6 +21,8 @@
  */
 
 #include "ESPNTPServer.h"
+#include "ESPNTPServerVersion.h"
+
 #include "Log.h"
 #include "DLogPrintWriter.h"
 #include "DLogSyslogWriter.h"
@@ -181,7 +183,7 @@ void setup()
     if (syslog_host != nullptr && strlen(syslog_host) > 0 && syslog_port != 0)
     {
         dlog.info(SETUP_TAG, "enabling syslog: '%s:%u'", syslog_host, syslog_port);
-        dlog.begin(new DLogSyslogWriter(syslog_host, syslog_port, devicename));
+        dlog.begin(new DLogSyslogWriter(syslog_host, syslog_port, devicename, ESPNTP_SERVER_VERSION));
     }
     const char* url = wifi.getOTAURL();
     const char* fp  = wifi.getOTAFP();
