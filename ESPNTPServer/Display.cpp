@@ -145,7 +145,7 @@ void Display::display()
     _dsp.display();
 }
 
-void Display::font(const char* fontData)
+void Display::font(const uint8_t* fontData)
 {
     _dsp.setFont(fontData);
 }

@@ -29,7 +29,7 @@ public:
     void clear();
     void display();
     void align(OLEDDISPLAY_TEXT_ALIGNMENT alignment);
-    void font(const char* fontData);
+    void font(const uint8_t* fontData);
 
     void print(int16_t x, int16_t y, const char* fmt, ...);
     void vprint(int16_t x, int16_t y, const char* fmt, va_list ap);
