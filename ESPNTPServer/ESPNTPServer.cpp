@@ -71,16 +71,33 @@ void processOTA(const char* ota_url, const char* ota_fp)
 
 	ESPhttpUpdate.rebootOnUpdate(false);
 
-	t_httpUpdate_return ret;
+#ifdef USE_CERT_STORE
+    CertStore certStore;
+#endif
+    WiFiClient *client = nullptr;
 
-	if (strncmp(ota_url, "https:", 6) == 0)
-	{
-		ret = ESPhttpUpdate.update(ota_url, "0.4", ota_fp);
-	}
-	else
-	{
-		ret = ESPhttpUpdate.update(ota_url, "0.4");
-	}
+    if (strncmp(ota_url, "https:", 6) == 0)
+    {
+#ifdef USE_CERT_STORE
+        int numCerts = certStore.initCertStore(SPIFFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
+        dlog.info(FPSTR(TAG), F("Number of CA certs read: %d"), numCerts);
+#endif
+        BearSSL::WiFiClientSecure *bear  = new BearSSL::WiFiClientSecure();
+#ifdef USE_CERT_STORE
+        // Integrate the cert store with this connection
+        dlog.info(FPSTR(TAG), F("adding cert store to connection"));
+        bear->setCertStore(&certStore);
+#else
+        bear->setInsecure();
+#endif
+        client = bear;
+    }
+    else
+    {
+        client = new WiFiClient;
+    }
+
+    t_httpUpdate_return ret = ESPhttpUpdate.update(*client, ota_url, "0.4");
 
 	String reason = ESPhttpUpdate.getLastErrorString();
 
