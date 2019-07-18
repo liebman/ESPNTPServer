@@ -1,13 +1,11 @@
 # ESPNTPServer
+
 GPS fueled ESP8266 based NTP Server
 
-[![Build Status](https://travis-ci.org/liebman/ESPNTPServer.svg?branch=master)](https://travis-ci.org/liebman/ESPNTPServer)
+<<<<<<< HEAD
+[![Build Status](https://travis-ci.org/liebman/ESPNTPServer.svg?branch=master)](https://travis-ci.org/liebman/ESPNTPServer.svg)
 
-[ESPNTPServer](ESPNTPServer) Contains the code for the NTP Server. I used [Eclipse with an Arduino plugin](http://sloeber.io) for development.  If you want to use the Arduino IDE then create an empty file named ESPNTPServer.ino
-
-[hardware](hardware) contains the esp8266 arduino core version used as a git submodule
-
-[libraries](libraries) has all needed libraries as git submodules 
+[src](src) Contains the code for the NTP Server
 
 [eagle](eagle) contains the schematic and board designs in Eagle cad.
 
