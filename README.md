@@ -2,7 +2,6 @@
 
 GPS fueled ESP8266 based NTP Server
 
-<<<<<<< HEAD
 [![Build Status](https://travis-ci.org/liebman/ESPNTPServer.svg?branch=master)](https://travis-ci.org/liebman/ESPNTPServer.svg)
 
 [src](src) Contains the code for the NTP Server
