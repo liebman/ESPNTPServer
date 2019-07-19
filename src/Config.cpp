@@ -11,7 +11,7 @@
 #include "ArduinoJson.h"
 
 static const char* TAG = "Config";
-static const char* CONFIG_FILE = "Config.json";
+static const char* CONFIG_FILE = "/Config.json";
 
 
 Config::Config() : _syslog_host(), _syslog_port(0)
@@ -42,6 +42,13 @@ bool Config::begin()
         }
     }
 
+    dlog.info(TAG, "begin scanning SPIFFS files");
+    Dir dir = SPIFFS.openDir("");
+    while (dir.next())
+    {
+        File f = dir.openFile("r");
+        dlog.info(TAG, "begin: file: '%s' size %d", dir.fileName().c_str(), f.size());
+    }
     return true;
 }
 
