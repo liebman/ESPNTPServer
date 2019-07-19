@@ -4,6 +4,7 @@ ESPNTPServer.code-workspace
 *-bak
 .pio
 .vscode
+/data
 eagle/ESPNTPServer/ESPNTPServer.b#*
 eagle/ESPNTPServer/ESPNTPServer.s#*
 eagle/ESPNTPServer/ESPNTPServer_*.zip
