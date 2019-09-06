@@ -49,6 +49,7 @@ WiFiSetup::~WiFiSetup()
 void WiFiSetup::connect(bool force_config)
 {
     WiFi.mode(WiFiMode::WIFI_STA);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (force_config)
     {
         dlog.info(TAG, F("connect: starting forced config portal!"));

@@ -72,6 +72,7 @@ void processOTA(const char* ota_url, const char* ota_fp)
 	ESPhttpUpdate.rebootOnUpdate(false);
 
 #ifdef USE_CERT_STORE
+    (void)ota_fp; // we are using the cert store so don't need this
     CertStore certStore;
 #endif
     WiFiClient *client = nullptr;
@@ -88,6 +89,7 @@ void processOTA(const char* ota_url, const char* ota_fp)
         dlog.info(FPSTR(TAG), F("adding cert store to connection"));
         bear->setCertStore(&certStore);
 #else
+        (void)ota_fp; // not used at the moment but maybe we want to re-instate it later.
         bear->setInsecure();
 #endif
         client = bear;
@@ -214,8 +216,8 @@ void setup()
     	processOTA(url, fp);
     }
 
-    WiFiMode_t mode = WiFi.getMode();
-    dlog.error(SETUP_TAG, "WiFi mode: %d", mode);
+    dlog.info(SETUP_TAG, F("WiFi mode: %d"), WiFi.getMode());
+    dlog.info(SETUP_TAG, F("wifi sleep mode: %d"), WiFi.getSleepMode());
 #endif
 
     display.process();
@@ -262,16 +264,14 @@ void loop()
     if (ip != last_ip)
     {
         dlog.warning(LOOP_TAG, F("ip address change %s -> %s"), last_ip.toString().c_str(), ip.toString().c_str());
+        if (ip == IPAddress(0,0,0,0))
+        {
+            dlog.error(LOOP_TAG, F("lost connectivity!  Resetting!"));
+            ESP.reset();
+            delay(10000);
+        }
         last_ip = ip;
     }
-
-#if 0
-    uint32_t m = millis();
-    if (m % 1000 == 0)
-    {
-    	dlog.info("loop", "uptime: %lu millis: %lu", m);
-    }
-#endif
 
     gps.process();
 
