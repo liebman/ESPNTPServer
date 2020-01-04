@@ -50,6 +50,10 @@ void WiFiSetup::connect(bool force_config)
 {
     WiFi.mode(WiFiMode::WIFI_STA);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
+
+    dlog.info(TAG, F("connect: disableing captive portal when auto-connecting"));
+    _wm.setEnableConfigPortal(false); // don't automatically use the captive portal
+
     if (force_config)
     {
         dlog.info(TAG, F("connect: starting forced config portal!"));
@@ -58,7 +62,11 @@ void WiFiSetup::connect(bool force_config)
     else
     {
         dlog.info(TAG, F("connect: auto-connecting"));
-        _wm.autoConnect(_devicename, NULL);
+        while (!_wm.autoConnect(_devicename, NULL))
+        {
+            dlog.error(TAG, F("connect: not connected! retrying...."));
+            delay(1000);
+        }
     }
 }
 

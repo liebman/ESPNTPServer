@@ -204,6 +204,9 @@ void setup()
         dlog.info(SETUP_TAG, "enabling syslog: '%s:%u'", syslog_host, syslog_port);
         dlog.begin(new DLogSyslogWriter(syslog_host, syslog_port, devicename, ESPNTP_SERVER_VERSION));
     }
+
+    dlog.info(SETUP_TAG, "ESP::FullVersion: %s", ESP.getFullVersion().c_str());
+
     const char* url = wifi.getOTAURL();
     const char* fp  = wifi.getOTAFP();
     if (fp == nullptr)
